@@ -1,0 +1,27 @@
+[package]
+name = "adhd-materia"
+version = "0.1.0"
+edition = "2021"
+include = ["Cargo.toml", "**/*.rs"]
+
+[dependencies]
+directories = "5.0"
+catppuccin-egui = { version = "5.2", default-features = false, features = [
+	"egui28",
+] }
+egui = "0.28"
+egui-notify = "0.15"
+eframe = { version = "0.28", default-features = false, features = [
+	"default_fonts",
+	"glow",
+] }
+env_logger = "0.11"
+kinded = "0.3"
+log = "0.4"
+ron = "0.8"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+uuid = { version = "1.10", features = ["v4", "fast-rng"] }
+
+[profile.dev.package."*"]
+opt-level = 2
