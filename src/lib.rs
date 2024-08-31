@@ -2,6 +2,7 @@ mod app;
 mod data_dir;
 mod ok_cancel_dialog;
 mod side_panel;
+mod tag;
 mod task;
 
 use std::sync::{LazyLock, Mutex, MutexGuard};
