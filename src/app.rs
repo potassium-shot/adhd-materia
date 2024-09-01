@@ -63,6 +63,7 @@ impl App for AdhdMateriaApp {
 	fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
 		egui::SidePanel::left("left_panel_buttons")
 			.exact_width(64.0)
+			.resizable(false)
 			.show(ctx, |ui| {
 				ui.vertical_centered_justified(|ui| {
 					let mut side_panel_button =
@@ -88,7 +89,7 @@ impl App for AdhdMateriaApp {
 
 					side_panel_button(ui, SidePanelKind::ScheduledTasks, '🕗');
 					ui.separator();
-					side_panel_button(ui, SidePanelKind::Tags, '🎫');
+					side_panel_button(ui, SidePanelKind::Scripts, '📃');
 				});
 			});
 

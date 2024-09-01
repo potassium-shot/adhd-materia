@@ -3,7 +3,7 @@ pub enum SidePanel {
 	#[default]
 	Hidden,
 	ScheduledTasks {},
-	Tags {},
+	Scripts {},
 }
 
 impl SidePanel {
@@ -11,9 +11,17 @@ impl SidePanel {
 		match self {
 			Self::Hidden => {}
 			Self::ScheduledTasks {} => {
+				ui.heading("Scheduled Tasks");
+				ui.separator();
+				ui.add_space(16.0);
+
 				ui.label("Would you rather have unlimited bacon, but no games, OR, games, UNLIMITED games, but no games?");
 			}
-			Self::Tags {} => {
+			Self::Scripts {} => {
+				ui.heading("Scripts");
+				ui.separator();
+				ui.add_space(16.0);
+
 				ui.label("Dinosaur haha");
 			}
 		}
@@ -30,7 +38,7 @@ impl SidePanel {
 	pub fn open(&mut self, kind: SidePanelKind) {
 		*self = match kind {
 			SidePanelKind::ScheduledTasks => Self::ScheduledTasks {},
-			SidePanelKind::Tags => Self::Tags {},
+			SidePanelKind::Scripts => Self::Scripts {},
 			SidePanelKind::Hidden => Self::Hidden,
 		}
 	}
