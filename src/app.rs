@@ -17,7 +17,7 @@ pub struct AdhdMateriaApp {
 
 impl AdhdMateriaApp {
 	pub fn new(cc: &CreationContext) -> Self {
-		// Enable catppuccn theme
+		// Enable catppuccin theme
 		catppuccin_egui::set_theme(&cc.egui_ctx, catppuccin_egui::MACCHIATO);
 
 		// Setup Nunito font

@@ -9,6 +9,7 @@ directories = "5.0"
 catppuccin-egui = { version = "5.2", default-features = false, features = [
 	"egui28",
 ] }
+colorhash = "0.1"
 egui = "0.28"
 egui-notify = "0.15"
 eframe = { version = "0.28", default-features = false, features = [

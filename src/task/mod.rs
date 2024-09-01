@@ -3,18 +3,20 @@ use std::{path::Path, str::FromStr, time::Duration};
 use ui::TaskWidget;
 use uuid::Uuid;
 
-use crate::data_dir::{DataDir, DataDirError};
+use crate::{data_dir::{DataDir, DataDirError}, tag::Tag};
 
 pub mod list;
 mod ui;
 
-#[derive(Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Task {
 	#[serde(skip)]
 	uuid: Uuid,
 
 	pub name: String,
 	pub description: String,
+	pub tags: Vec<Tag>,
 
 	#[serde(skip)]
 	state: TaskState,
@@ -26,8 +28,11 @@ impl Default for Task {
 	fn default() -> Self {
 		Self {
 			uuid: Uuid::new_v4(),
+
 			name: String::from("Unnamed"),
 			description: String::new(),
+			tags: Vec::new(),
+
 			state: TaskState::Display,
 			marked_for_delete: false,
 		}
@@ -110,6 +115,15 @@ impl Task {
 	}
 
 	pub fn display(&mut self) {
+		for tag in &mut self.tags {
+			if let Err(e) = tag.apply_text() {
+				crate::toasts()
+					.error(format!("Tag parsing error: {}", e))
+					.set_closable(true)
+					.set_duration(Some(Duration::from_millis(10_000)));
+			}
+		}
+
 		if let Err(e) = self.save() {
 			crate::toasts()
 				.error(format!("Could not save task: {}", e))

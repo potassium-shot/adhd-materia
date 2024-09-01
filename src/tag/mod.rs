@@ -4,10 +4,17 @@ use std::{
 	str::{Chars, FromStr},
 };
 
+use ui::TagWidget;
+
+mod ui;
+
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Tag {
 	name: String,
 	value: Option<TagValue>,
+
+	#[serde(skip)]
+	editing_text: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -18,6 +25,16 @@ pub enum TagValue {
 	List(Vec<TagValue>),
 	Dictionary(HashMap<String, TagValue>),
 	Tag(Box<Tag>),
+}
+
+impl Default for Tag {
+	fn default() -> Self {
+		Self {
+			name: String::from("new_tag"),
+			value: None,
+			editing_text: None,
+		}
+	}
 }
 
 /// Do not use with Cycle iterators or endless iterators of whitespace, will loop infinitely!
@@ -78,7 +95,29 @@ impl Tag {
 			}
 		}
 
-		Ok(Self { name, value })
+		Ok(Self { name, value, editing_text: None })
+	}
+
+	pub fn widget(&mut self, edit_mode: bool) -> TagWidget {
+		TagWidget::new(self, edit_mode)
+	}
+
+	pub fn get_editing_text(&mut self) -> &mut String {
+		match self.editing_text {
+			Some(ref mut text) => text,
+			None => {
+				self.editing_text = Some(self.to_string());
+				self.editing_text.as_mut().unwrap()
+			}
+		}
+	}
+
+	pub fn apply_text(&mut self) -> Result<(), TagError> {
+		if let Some(text) = self.editing_text.take() {
+			*self = text.parse()?;
+		}
+
+		Ok(())
 	}
 }
 
@@ -98,12 +137,12 @@ impl TagValue {
 			'"' | '\'' => Ok(Self::Text(
 				Self::parse_string(chars).expect("peek returned \" or '")?,
 			)),
-			'0'..'9' | '.' | '-' => {
+			'0'..='9' | '.' | '-' => {
 				let mut s: String = String::new();
 
 				while let Some(c) = chars.peek().copied() {
 					match c {
-						'0'..'9' | '.' | '-' => {
+						'0'..='9' | '.' | '-' => {
 							chars.next().expect("peek returned some");
 							s.push(c);
 						}

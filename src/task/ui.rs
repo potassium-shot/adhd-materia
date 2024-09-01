@@ -1,3 +1,5 @@
+use crate::tag::Tag;
+
 use super::{Task, TaskState};
 
 pub struct TaskWidget<'task> {
@@ -32,6 +34,16 @@ impl egui::Widget for TaskWidget<'_> {
 						if !self.task.description.is_empty() {
 							ui.separator();
 							ui.label(self.task.description.as_str());
+						}
+
+						if !self.task.tags.is_empty() {
+							ui.separator();
+
+							ui.horizontal_wrapped(|ui| {
+								for tag in self.task.tags.iter_mut() {
+									ui.add(tag.widget(false));
+								}
+							});
 						}
 					});
 				}
@@ -68,6 +80,18 @@ impl egui::Widget for TaskWidget<'_> {
 						});
 
 						ui.text_edit_multiline(&mut self.task.description);
+
+						ui.separator();
+
+						ui.horizontal_wrapped(|ui| {
+							for tag in self.task.tags.iter_mut() {
+								ui.add(tag.widget(true));
+							}
+
+							if ui.button("New Tag").clicked() {
+								self.task.tags.push(Tag::default());
+							}
+						});
 					});
 				}
 			})
