@@ -42,6 +42,7 @@ impl egui::Widget for TaskWidget<'_> {
 							ui.horizontal_wrapped(|ui| {
 								for tag in self.task.tags.iter_mut() {
 									ui.add(tag.widget(false));
+									ui.add_space(8.0);
 								}
 							});
 						}
@@ -84,8 +85,26 @@ impl egui::Widget for TaskWidget<'_> {
 						ui.separator();
 
 						ui.horizontal_wrapped(|ui| {
-							for tag in self.task.tags.iter_mut() {
+							let mut tags_to_remove = Vec::new();
+
+							for (i, tag) in self.task.tags.iter_mut().enumerate() {
 								ui.add(tag.widget(true));
+
+								if ui
+									.button(
+										egui::RichText::from("❌")
+											.color(ui.style().visuals.error_fg_color),
+									)
+									.clicked()
+								{
+									tags_to_remove.push(i);
+								}
+
+								ui.add_space(8.0);
+							}
+
+							for i in tags_to_remove.into_iter().rev() {
+								self.task.tags.remove(i);
 							}
 
 							if ui.button("New Tag").clicked() {
