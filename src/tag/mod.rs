@@ -39,17 +39,67 @@ impl Default for Tag {
 
 /// Do not use with Cycle iterators or endless iterators of whitespace, will loop infinitely!
 #[derive(Debug, Clone)]
-struct WhitespacelessChars<'a>(Chars<'a>);
+struct TagStringChars<'a> {
+	chars: Chars<'a>,
+	peeked: Vec<Option<char>>,
+}
 
-impl Iterator for WhitespacelessChars<'_> {
+impl Iterator for TagStringChars<'_> {
 	type Item = char;
 
 	fn next(&mut self) -> Option<Self::Item> {
-		match self.0.next() {
-			Some(c) if c.is_whitespace() => self.next(),
-			Some(c) => Some(c),
+		match self.next_with_whitespace() {
+			Some(whitespace) if whitespace.is_whitespace() => self.next(),
+			Some(other) => Some(other),
 			None => None,
 		}
+	}
+}
+
+impl<'a> TagStringChars<'a> {
+	pub fn new(s: &'a str) -> Self {
+		Self {
+			chars: s.chars(),
+			peeked: Vec::new(),
+		}
+	}
+
+	pub fn peek(&mut self) -> Option<char> {
+		if let Some(Some(c)) = self.peeked.iter().find(|c| {
+			if let Some(c) = c {
+				!c.is_whitespace()
+			} else {
+				true
+			}
+		}) {
+			Some(*c)
+		} else {
+			while let Some(c) = self.chars.next() {
+				self.peeked.push(Some(c));
+
+				if !c.is_whitespace() {
+					return Some(c);
+				}
+			}
+
+			None
+		}
+	}
+
+	pub fn next_with_whitespace(&mut self) -> Option<char> {
+		if self.peeked.is_empty() {
+			self.chars.next()
+		} else {
+			self.peeked.remove(0)
+		}
+	}
+
+	pub fn peek_with_whitespace(&mut self) -> Option<char> {
+		if self.peeked.is_empty() {
+			self.peeked.push(self.chars.next());
+		}
+
+		self.peeked[0]
 	}
 }
 
@@ -57,12 +107,12 @@ impl FromStr for Tag {
 	type Err = TagError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Self::parse(&mut WhitespacelessChars(s.chars()).peekable())
+		Self::parse(&mut TagStringChars::new(s))
 	}
 }
 
 impl Tag {
-	fn parse(chars: &mut Peekable<WhitespacelessChars>) -> Result<Self, TagError> {
+	fn parse(chars: &mut TagStringChars) -> Result<Self, TagError> {
 		let first_char = chars.next().ok_or(TagError::EmptyTag)?;
 		let mut name = String::new();
 
@@ -74,7 +124,7 @@ impl Tag {
 
 		let mut value = None;
 
-		while let Some(c) = chars.peek().copied() {
+		while let Some(c) = chars.peek() {
 			match c {
 				'(' => {
 					chars.next().expect("peek returned some");
@@ -95,7 +145,11 @@ impl Tag {
 			}
 		}
 
-		Ok(Self { name, value, editing_text: None })
+		Ok(Self {
+			name,
+			value,
+			editing_text: None,
+		})
 	}
 
 	pub fn widget(&mut self, edit_mode: bool) -> TagWidget {
@@ -125,13 +179,13 @@ impl FromStr for TagValue {
 	type Err = TagError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Self::parse(&mut WhitespacelessChars(s.chars()).peekable())
+		Self::parse(&mut TagStringChars::new(s))
 	}
 }
 
 impl TagValue {
-	fn parse(chars: &mut Peekable<WhitespacelessChars>) -> Result<Self, TagError> {
-		let first_char = chars.peek().ok_or(TagError::EmptyTagValue).copied()?;
+	fn parse(chars: &mut TagStringChars) -> Result<Self, TagError> {
+		let first_char = chars.peek().ok_or(TagError::EmptyTagValue)?;
 
 		match first_char {
 			'"' | '\'' => Ok(Self::Text(
@@ -140,11 +194,17 @@ impl TagValue {
 			'0'..='9' | '.' | '-' => {
 				let mut s: String = String::new();
 
-				while let Some(c) = chars.peek().copied() {
+				let mut started = false;
+
+				while let Some(c) = chars.peek_with_whitespace() {
 					match c {
 						'0'..='9' | '.' | '-' => {
-							chars.next().expect("peek returned some");
+							chars.next_with_whitespace().expect("peek returned some");
 							s.push(c);
+							started = true;
+						}
+						' ' if !started => {
+							chars.next_with_whitespace().expect("peek returned some");
 						}
 						_ => {
 							break;
@@ -168,7 +228,7 @@ impl TagValue {
 				let mut ready_for_element = true;
 				let mut closed = false;
 
-				while let Some(c) = chars.peek().copied() {
+				while let Some(c) = chars.peek() {
 					match c {
 						']' => {
 							chars.next().expect("Peek returned some");
@@ -206,9 +266,9 @@ impl TagValue {
 				let mut check_comma = false;
 
 				let mut parse_element =
-					|chars: &mut Peekable<WhitespacelessChars>| -> Option<Result<(String, TagValue), TagError>> {
+					|chars: &mut TagStringChars| -> Option<Result<(String, TagValue), TagError>> {
 						if check_comma {
-							if chars.peek().copied().unwrap_or(' ') != ',' {
+							if chars.peek().unwrap_or(' ') != ',' {
 								return None;
 							}
 
@@ -254,8 +314,8 @@ impl TagValue {
 }
 
 impl TagValue {
-	fn parse_string(chars: &mut Peekable<WhitespacelessChars>) -> Option<Result<String, TagError>> {
-		let first_char = chars.peek().copied()?;
+	fn parse_string(chars: &mut TagStringChars) -> Option<Result<String, TagError>> {
+		let first_char = chars.peek()?;
 
 		match first_char {
 			'"' | '\'' => {}
@@ -266,7 +326,7 @@ impl TagValue {
 
 		let mut string = String::new();
 
-		while let Some(c) = chars.next() {
+		while let Some(c) = chars.next_with_whitespace() {
 			match c {
 				end if end == first_char => {
 					break;
