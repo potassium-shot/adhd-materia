@@ -9,8 +9,10 @@ directories = "5.0"
 catppuccin-egui = { version = "5.2", default-features = false, features = [
 	"egui28",
 ] }
+chrono = { version = "0.4", features = ["serde"] }
 colorhash = "0.1"
 egui = "0.28"
+egui_extras = { version = "0.28", features = ["datepicker"] }
 egui-notify = "0.15"
 eframe = { version = "0.28", default-features = false, features = [
 	"default_fonts",

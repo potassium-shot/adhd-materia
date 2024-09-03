@@ -3,14 +3,15 @@ use std::{path::Path, str::FromStr, time::Duration};
 use ui::TaskWidget;
 use uuid::Uuid;
 
-use crate::{data_dir::{DataDir, DataDirError}, tag::Tag};
+use crate::{data_dir::DataDirError, tag::Tag};
 
 pub mod list;
+pub mod scheduled;
 mod ui;
 
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
-pub struct Task {
+pub struct Task<T = NormalTaskData> {
 	#[serde(skip)]
 	uuid: Uuid,
 
@@ -18,13 +19,15 @@ pub struct Task {
 	pub description: String,
 	pub tags: Vec<Tag>,
 
+	pub type_data: T,
+
 	#[serde(skip)]
 	state: TaskState,
 	#[serde(skip)]
 	marked_for_delete: bool,
 }
 
-impl Default for Task {
+impl<T: TaskTypeData> Default for Task<T> {
 	fn default() -> Self {
 		Self {
 			uuid: Uuid::new_v4(),
@@ -33,13 +36,15 @@ impl Default for Task {
 			description: String::new(),
 			tags: Vec::new(),
 
+			type_data: T::default(),
+
 			state: TaskState::Display,
 			marked_for_delete: false,
 		}
 	}
 }
 
-impl FromStr for Task {
+impl<T: TaskTypeData> FromStr for Task<T> {
 	type Err = TaskErrorKind;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -47,7 +52,7 @@ impl FromStr for Task {
 	}
 }
 
-impl Task {
+impl<T: TaskTypeData> Task<T> {
 	pub fn get_uuid(&self) -> &Uuid {
 		&self.uuid
 	}
@@ -64,17 +69,17 @@ impl Task {
 		Ok(result)
 	}
 
-	pub fn load_from_name(name: impl AsRef<str>) -> Result<Self, TaskError> {
+	pub fn load_from_name(name: impl AsRef<str>, path: TaskPath) -> Result<Self, TaskError> {
 		let name = name.as_ref();
-		let result = (|| (Self::load_from_path(crate::data_dir()?.tasks().join(name))))();
+		let result = (|| (Self::load_from_path(path.get_path()?.join(name))))();
 		result.map_err(|e| TaskError {
 			task_name: name.to_owned(),
 			error_kind: e,
 		})
 	}
 
-	pub fn load(uuid: Uuid) -> Result<Self, TaskError> {
-		Self::load_from_name(uuid.to_string())
+	pub fn load(uuid: Uuid, path: TaskPath) -> Result<Self, TaskError> {
+		Self::load_from_name(uuid.to_string(), path)
 	}
 
 	pub fn save_to_path(&self, path: impl AsRef<Path>) -> Result<(), TaskError> {
@@ -89,17 +94,17 @@ impl Task {
 		})?)
 	}
 
-	pub fn save(&self) -> Result<(), TaskError> {
+	pub fn save(&self, path: TaskPath) -> Result<(), TaskError> {
 		let name = self.uuid.to_string();
 
-		self.save_to_path(Self::get_data_dir(&name)?.tasks().join(name))
+		self.save_to_path(Self::get_data_dir(&name, path)?.join(name))
 	}
 
-	fn delete(&self) -> Result<(), TaskError> {
+	fn delete(&self, path: TaskPath) -> Result<(), TaskError> {
 		let name = self.uuid.to_string();
 
 		Ok(std::fs::remove_file(
-			Self::get_data_dir(&name)?.tasks().join(name),
+			Self::get_data_dir(&name, path)?.join(name),
 		)?)
 	}
 
@@ -107,14 +112,14 @@ impl Task {
 		self.marked_for_delete = true;
 	}
 
-	fn get_data_dir(name: impl ToString) -> Result<&'static DataDir, TaskError> {
-		crate::data_dir().map_err(|e| TaskError {
+	fn get_data_dir(name: impl ToString, path: TaskPath) -> Result<&'static Path, TaskError> {
+		path.get_path().map_err(|e| TaskError {
 			task_name: name.to_string(),
 			error_kind: e.into(),
 		})
 	}
 
-	pub fn display(&mut self) {
+	pub fn display(&mut self, path: TaskPath) {
 		for tag in &mut self.tags {
 			if let Err(e) = tag.apply_text() {
 				crate::toasts()
@@ -124,7 +129,7 @@ impl Task {
 			}
 		}
 
-		if let Err(e) = self.save() {
+		if let Err(e) = self.save(path) {
 			crate::toasts()
 				.error(format!("Could not save task: {}", e))
 				.set_closable(true)
@@ -140,15 +145,15 @@ impl Task {
 		};
 	}
 
-	pub fn widget(&mut self) -> TaskWidget {
-		TaskWidget::new(self)
-	}
-
 	pub fn is_pending_delete(&self) -> bool {
 		match self.state {
 			TaskState::Edit { pending_delete } => pending_delete,
 			_ => false,
 		}
+	}
+
+	pub fn widget(&mut self) -> TaskWidget<T> {
+		TaskWidget::new(self)
 	}
 }
 
@@ -160,6 +165,31 @@ enum TaskState {
 		pending_delete: bool,
 	},
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TaskPath {
+	Tasks,
+	Scheduled,
+}
+
+impl TaskPath {
+	fn get_path(&self) -> Result<&'static Path, &'static DataDirError> {
+		Ok(match self {
+			Self::Tasks => crate::data_dir()?.tasks(),
+			Self::Scheduled => crate::data_dir()?.scheduled(),
+		})
+	}
+}
+
+pub trait TaskTypeData:
+	std::fmt::Debug + PartialEq + Default + serde::Serialize + serde::de::DeserializeOwned
+{
+}
+
+#[derive(Debug, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+pub struct NormalTaskData;
+
+impl TaskTypeData for NormalTaskData {}
 
 #[derive(Debug, thiserror::Error)]
 #[error("Task {task_name}: {error_kind}")]

@@ -5,7 +5,7 @@ use eframe::{App, CreationContext};
 use crate::{
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
 	side_panel::{SidePanel, SidePanelKind},
-	task::list::{TaskList, TaskListError},
+	task::{list::{TaskList, TaskListError}, TaskPath},
 };
 
 pub struct AdhdMateriaApp {
@@ -39,7 +39,7 @@ impl AdhdMateriaApp {
 		cc.egui_ctx.set_fonts(fonts);
 
 		// Load tasks and report errors
-		let task_list = TaskList::new();
+		let task_list = TaskList::new(TaskPath::Tasks);
 
 		if let Ok((_, errors)) = &task_list {
 			errors.iter().for_each(|error| {

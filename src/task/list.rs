@@ -1,26 +1,32 @@
-use std::collections::{hash_map, HashMap};
+use std::{
+	collections::{hash_map, HashMap},
+	time::Duration,
+};
 
 use uuid::Uuid;
 
 use crate::data_dir::DataDirError;
 
-use super::{Task, TaskError};
+use super::{NormalTaskData, Task, TaskError, TaskPath, TaskTypeData};
 
-pub struct TaskList {
-	tasks: HashMap<Uuid, Task>,
+pub struct TaskList<T = NormalTaskData> {
+	tasks: HashMap<Uuid, Task<T>>,
+	path: TaskPath,
 }
 
-impl TaskList {
-	pub fn new() -> Result<(Self, Vec<TaskError>), TaskListError> {
-		let (tasks, errors) = std::fs::read_dir(crate::data_dir()?.tasks())?.fold(
-			(HashMap::<Uuid, Task>::new(), Vec::<TaskError>::new()),
+impl<T: TaskTypeData> TaskList<T> {
+	pub fn new(path: TaskPath) -> Result<(Self, Vec<TaskError>), TaskListError> {
+		let (tasks, errors) = std::fs::read_dir(path.get_path()?)?.fold(
+			(HashMap::<Uuid, Task<T>>::new(), Vec::<TaskError>::new()),
 			|(mut tasks, mut errors), entry| {
 				let result: Result<(), TaskError> = (|| {
 					let entry = entry?;
 
 					if entry.metadata()?.is_file() {
-						let task =
-							Task::load_from_name(entry.file_name().to_string_lossy().to_string())?;
+						let task = Task::<T>::load_from_name(
+							entry.file_name().to_string_lossy().to_string(),
+							path,
+						)?;
 						tasks.insert(task.uuid.clone(), task);
 					}
 
@@ -35,27 +41,27 @@ impl TaskList {
 			},
 		);
 
-		Ok((Self { tasks }, errors))
+		Ok((Self { tasks, path }, errors))
 	}
 
-	pub fn tasks(&self) -> hash_map::Values<Uuid, Task> {
+	pub fn tasks(&self) -> hash_map::Values<Uuid, Task<T>> {
 		self.tasks.values()
 	}
 
-	pub fn tasks_mut(&mut self) -> hash_map::ValuesMut<Uuid, Task> {
+	pub fn tasks_mut(&mut self) -> hash_map::ValuesMut<Uuid, Task<T>> {
 		self.tasks.values_mut()
 	}
 
 	pub fn new_task(&mut self) -> Result<(), TaskError> {
-		let task = Task::default();
-		task.save()?;
+		let task = Task::<T>::default();
+		task.save(self.path)?;
 		self.tasks.insert(task.uuid, task);
 		Ok(())
 	}
 
 	pub fn delete_task(&mut self, uuid: &Uuid) -> Result<(), TaskError> {
 		if let Some(task) = self.tasks.remove(uuid) {
-			task.delete()?;
+			task.delete(self.path)?;
 		}
 
 		Ok(())
@@ -83,6 +89,17 @@ impl TaskList {
 		}
 
 		error_list
+	}
+	
+	pub fn save_all(&self) {
+		for task in self.tasks.values() {
+			if let Err(e) = task.save(self.path) {
+				crate::toasts()
+					.error(format!("Could not save task: {}", e))
+					.set_closable(true)
+					.set_duration(Some(Duration::from_millis(10_000)));
+			}
+		}
 	}
 }
 

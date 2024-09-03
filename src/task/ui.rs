@@ -1,13 +1,50 @@
 use crate::tag::Tag;
 
-use super::{Task, TaskState};
+use super::{scheduled::ScheduledTask, NormalTaskData, Task, TaskPath, TaskState, TaskTypeData};
 
-pub struct TaskWidget<'task> {
-	task: &'task mut Task,
+pub struct TaskWidget<'task, T> {
+	task: &'task mut Task<T>,
 }
 
-impl egui::Widget for TaskWidget<'_> {
-	fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+impl egui::Widget for TaskWidget<'_, NormalTaskData> {
+	fn ui(mut self, ui: &mut egui::Ui) -> egui::Response {
+		self.draw_task_widget(ui, TaskPath::Tasks)
+	}
+}
+
+impl<'task, T: TaskTypeData> TaskWidget<'task, T> {
+	pub fn new(task: &'task mut Task<T>) -> Self {
+		Self { task }
+	}
+}
+
+impl egui::Widget for TaskWidget<'_, ScheduledTask> {
+	fn ui(mut self, ui: &mut egui::Ui) -> egui::Response {
+		let uuid = self.task.get_uuid().clone();
+		ui.push_id(uuid, |ui| {
+			ui.group(|ui| {
+				ui.vertical(|ui| {
+					match self.task.state {
+						TaskState::Display => {
+							ui.strong(format!("{}", self.task.type_data.date));
+						}
+						TaskState::Edit { .. } => {
+							ui.add(egui_extras::DatePickerButton::new(
+								&mut self.task.type_data.date,
+							));
+						}
+					}
+					self.draw_task_widget(ui, TaskPath::Scheduled);
+				});
+			})
+			.response
+		})
+		.inner
+	}
+}
+
+impl<T: TaskTypeData> TaskWidget<'_, T> {
+	fn draw_task_widget(&mut self, ui: &mut egui::Ui, path: TaskPath) -> egui::Response {
 		let mut set_pending_delete = false;
 
 		let response = ui
@@ -63,7 +100,7 @@ impl egui::Widget for TaskWidget<'_> {
 								})
 								.clicked()
 							{
-								self.task.display();
+								self.task.display(path);
 							}
 
 							if ui
@@ -121,11 +158,5 @@ impl egui::Widget for TaskWidget<'_> {
 		}
 
 		response
-	}
-}
-
-impl<'task> TaskWidget<'task> {
-	pub fn new(task: &'task mut Task) -> Self {
-		Self { task }
 	}
 }

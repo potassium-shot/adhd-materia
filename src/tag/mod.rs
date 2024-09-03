@@ -1,6 +1,5 @@
 use std::{
 	collections::HashMap,
-	iter::Peekable,
 	str::{Chars, FromStr},
 };
 
