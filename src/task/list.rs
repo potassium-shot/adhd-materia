@@ -53,7 +53,10 @@ impl<T: TaskTypeData> TaskList<T> {
 	}
 
 	pub fn new_task(&mut self) -> Result<(), TaskError> {
-		let task = Task::<T>::default();
+		self.add_task(Task::<T>::default())
+	}
+
+	pub fn add_task(&mut self, task: Task<T>) -> Result<(), TaskError> {
 		task.save(self.path)?;
 		self.tasks.insert(task.uuid, task);
 		Ok(())
@@ -90,7 +93,7 @@ impl<T: TaskTypeData> TaskList<T> {
 
 		error_list
 	}
-	
+
 	pub fn save_all(&self) {
 		for task in self.tasks.values() {
 			if let Err(e) = task.save(self.path) {
@@ -100,6 +103,10 @@ impl<T: TaskTypeData> TaskList<T> {
 					.set_duration(Some(Duration::from_millis(10_000)));
 			}
 		}
+	}
+
+	pub fn get_tasks(&self) -> impl Iterator<Item = &Task<T>> {
+		self.tasks.values()
 	}
 }
 

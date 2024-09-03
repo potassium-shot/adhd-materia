@@ -1,7 +1,10 @@
 mod app;
 mod data_dir;
 mod ok_cancel_dialog;
+mod session;
+mod settings;
 mod side_panel;
+mod startup_script;
 mod tag;
 mod task;
 

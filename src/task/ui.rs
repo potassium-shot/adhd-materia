@@ -1,6 +1,9 @@
 use crate::tag::Tag;
 
-use super::{scheduled::ScheduledTask, NormalTaskData, Task, TaskPath, TaskState, TaskTypeData};
+use super::{
+	scheduled::{RepeatMode, ScheduledTask},
+	NormalTaskData, Task, TaskPath, TaskState, TaskTypeData,
+};
 
 pub struct TaskWidget<'task, T> {
 	task: &'task mut Task<T>,
@@ -26,12 +29,50 @@ impl egui::Widget for TaskWidget<'_, ScheduledTask> {
 				ui.vertical(|ui| {
 					match self.task.state {
 						TaskState::Display => {
-							ui.strong(format!("{}", self.task.type_data.date));
+							ui.strong(format!(
+								"{}, {}",
+								self.task.type_data.date, self.task.type_data.repeat_mode
+							));
 						}
 						TaskState::Edit { .. } => {
-							ui.add(egui_extras::DatePickerButton::new(
-								&mut self.task.type_data.date,
-							));
+							ui.horizontal(|ui| {
+								ui.add(egui_extras::DatePickerButton::new(
+									&mut self.task.type_data.date,
+								));
+
+								ui.separator();
+								ui.label("Repat mode");
+
+								egui::ComboBox::new("repeat_mode", "")
+									.selected_text(format!("{}", self.task.type_data.repeat_mode))
+									.show_ui(ui, |ui| {
+										ui.selectable_value(
+											&mut self.task.type_data.repeat_mode,
+											RepeatMode::Never,
+											"Never",
+										);
+										ui.selectable_value(
+											&mut self.task.type_data.repeat_mode,
+											RepeatMode::Daily,
+											"Daily",
+										);
+										ui.selectable_value(
+											&mut self.task.type_data.repeat_mode,
+											RepeatMode::Weekly,
+											"Weekly",
+										);
+										ui.selectable_value(
+											&mut self.task.type_data.repeat_mode,
+											RepeatMode::Monthly,
+											"Monthly",
+										);
+										ui.selectable_value(
+											&mut self.task.type_data.repeat_mode,
+											RepeatMode::Yearly,
+											"Yealry",
+										);
+									});
+							});
 						}
 					}
 					self.draw_task_widget(ui, TaskPath::Scheduled);

@@ -5,7 +5,11 @@ use eframe::{App, CreationContext};
 use crate::{
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
 	side_panel::{SidePanel, SidePanelKind},
-	task::{list::{TaskList, TaskListError}, TaskPath},
+	startup_script::StartupScript,
+	task::{
+		list::{TaskList, TaskListError},
+		TaskPath,
+	},
 };
 
 pub struct AdhdMateriaApp {
@@ -37,6 +41,23 @@ impl AdhdMateriaApp {
 			.insert(0, String::from(NUNITO_REGULAR));
 
 		cc.egui_ctx.set_fonts(fonts);
+
+		match StartupScript::run() {
+			Ok(errors) => {
+				for error in errors {
+					crate::toasts()
+						.error(format!("Scheduled tasks error: {}", error))
+						.set_closable(true)
+						.set_duration(Some(Duration::from_millis(10_000)));
+				}
+			}
+			Err(e) => {
+				crate::toasts()
+					.error(format!("{}", e))
+					.set_closable(true)
+					.set_duration(None);
+			}
+		}
 
 		// Load tasks and report errors
 		let task_list = TaskList::new(TaskPath::Tasks);

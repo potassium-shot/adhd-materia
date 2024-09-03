@@ -9,7 +9,7 @@ pub mod list;
 pub mod scheduled;
 mod ui;
 
-#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct Task<T = NormalTaskData> {
 	#[serde(skip)]
@@ -155,9 +155,21 @@ impl<T: TaskTypeData> Task<T> {
 	pub fn widget(&mut self) -> TaskWidget<T> {
 		TaskWidget::new(self)
 	}
+
+	pub fn convert<NewT: TaskTypeData>(self, type_data: NewT) -> Task<NewT> {
+		Task {
+			type_data,
+			uuid: self.uuid,
+			name: self.name,
+			description: self.description,
+			tags: self.tags,
+			state: self.state,
+			marked_for_delete: self.marked_for_delete,
+		}
+	}
 }
 
-#[derive(Debug, Eq, PartialEq, Default)]
+#[derive(Debug, Eq, PartialEq, Clone, Default)]
 enum TaskState {
 	#[default]
 	Display,
