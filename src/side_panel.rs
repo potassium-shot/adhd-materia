@@ -140,6 +140,10 @@ impl SidePanel {
 					.show(ui, |ui| {
 						let mut settings = Settings::get();
 
+						ui.label("Default task");
+						ui.add(settings.default_task.widget());
+						ui.end_row();
+
 						ui.label("Repeating task rewind");
 						egui::ComboBox::from_id_source("repeatable_rewind")
 							.selected_text(format!("{:?}", settings.repeatable_rewind))
@@ -166,15 +170,17 @@ impl SidePanel {
 
 						settings.default_task.edit_no_buttons();
 
-						ui.label("Default task");
-						ui.add(settings.default_task.widget());
-						ui.end_row();
-
 						ui.label("Scheduled task tag");
 						ui.text_edit_singleline(&mut settings.scheduled_task_tag)
 							.on_hover_ui(|ui| {
 								ui.label("Tag to apply to scheduled tasks, $DATE is replaced by the scheduled date");
 							});
+						ui.end_row();
+
+						ui.label("Delete used scheduled tasks");
+						ui.add(egui::Checkbox::without_text(&mut settings.delete_used_scheduled_tasks)).on_hover_ui(|ui| {
+							ui.label("Delete scheduled tasks that have been used and are never to be triggered again.");
+						});
 					});
 			}
 		}

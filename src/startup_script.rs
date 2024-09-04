@@ -6,7 +6,7 @@ use crate::{
 	tag::Tag,
 	task::{
 		list::{TaskList, TaskListError},
-		scheduled::ScheduledTask,
+		scheduled::{RepeatMode, ScheduledTask},
 		NormalTaskData, TaskError, TaskPath,
 	},
 };
@@ -15,11 +15,11 @@ pub struct StartupScript;
 
 impl StartupScript {
 	pub fn run() -> Result<Vec<TaskError>, StartupError> {
-		let (scheduled_task_list, mut errors) =
+		let (mut scheduled_task_list, mut errors) =
 			TaskList::<ScheduledTask>::new(TaskPath::Scheduled)?;
 		let (mut task_list, _) = TaskList::<NormalTaskData>::new(TaskPath::Tasks)?;
 
-		for task in scheduled_task_list.get_tasks() {
+		for task in scheduled_task_list.get_tasks_mut() {
 			let spawn_count = match Settings::get().repeatable_rewind {
 				crate::settings::RepeatableRewind::One => i32::min(task.type_data.spawn_count(), 1),
 				crate::settings::RepeatableRewind::All => task.type_data.spawn_count(),
@@ -43,7 +43,13 @@ impl StartupScript {
 					errors.push(e);
 				}
 			}
+
+			if spawn_count > 0 && task.type_data.repeat_mode == RepeatMode::Never {
+				task.mark_for_delete();
+			}
 		}
+
+		scheduled_task_list.cleanup_marked_for_delete();
 
 		Session::mutate(|session| session.last_session = chrono::Local::now().date_naive())?;
 		Ok(errors)

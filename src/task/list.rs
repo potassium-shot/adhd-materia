@@ -108,6 +108,10 @@ impl<T: TaskTypeData> TaskList<T> {
 	pub fn get_tasks(&self) -> impl Iterator<Item = &Task<T>> {
 		self.tasks.values()
 	}
+
+	pub fn get_tasks_mut(&mut self) -> impl Iterator<Item = &mut Task<T>> {
+		self.tasks.values_mut()
+	}
 }
 
 #[derive(Debug, thiserror::Error)]

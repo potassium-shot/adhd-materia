@@ -11,17 +11,19 @@ static SETTINGS: LazyLock<Mutex<Settings>> =
 #[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct Settings {
-	pub repeatable_rewind: RepeatableRewind,
 	pub default_task: Task,
+	pub repeatable_rewind: RepeatableRewind,
 	pub scheduled_task_tag: String,
+	pub delete_used_scheduled_tasks: bool,
 }
 
 impl Default for Settings {
 	fn default() -> Self {
 		Self {
-			repeatable_rewind: RepeatableRewind::default(),
 			default_task: Task::default(),
+			repeatable_rewind: RepeatableRewind::default(),
 			scheduled_task_tag: String::from("scheduled_on($DATE)"),
+			delete_used_scheduled_tasks: true,
 		}
 	}
 }
