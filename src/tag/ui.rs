@@ -1,5 +1,7 @@
 use std::sync::LazyLock;
 
+use convert_case::Casing;
+
 use super::{Tag, TagValue};
 
 static COLORHASH: LazyLock<colorhash::ColorHash> = LazyLock::new(|| colorhash::ColorHash::new());
@@ -41,7 +43,7 @@ impl TagWidget<'_> {
 			))
 			.fill(col.lerp_to_gamma(ui.style().visuals.window_fill(), 0.8))
 			.show(ui, |ui| {
-				ui.label(tag.name.as_str());
+				ui.label(tag.name.to_case(convert_case::Case::Title));
 
 				if let Some(value) = &tag.value {
 					Self::draw_tag_value(ui, value, col);
@@ -64,7 +66,7 @@ impl TagWidget<'_> {
 			}
 			TagValue::Dictionary(dict) => {
 				for (key, value) in dict {
-					ui.label(key);
+					ui.weak(key);
 					Self::draw_tag_value(ui, value, color);
 				}
 			}

@@ -35,6 +35,7 @@ dependencies = [
  "catppuccin-egui",
  "chrono",
  "colorhash",
+ "convert_case",
  "directories",
  "eframe",
  "egui",
