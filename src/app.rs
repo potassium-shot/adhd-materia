@@ -3,13 +3,10 @@ use std::time::Duration;
 use eframe::{App, CreationContext};
 
 use crate::{
-	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
-	side_panel::{SidePanel, SidePanelKind},
-	startup_script::StartupScript,
-	task::{
+	ok_cancel_dialog::{OkCancelDialog, OkCancelResult}, settings::Settings, side_panel::{SidePanel, SidePanelKind}, startup_script::StartupScript, task::{
 		list::{TaskList, TaskListError},
 		TaskPath,
-	},
+	}
 };
 
 pub struct AdhdMateriaApp {
@@ -111,6 +108,8 @@ impl App for AdhdMateriaApp {
 					side_panel_button(ui, SidePanelKind::ScheduledTasks, '🕗');
 					ui.separator();
 					side_panel_button(ui, SidePanelKind::Scripts, '📃');
+					ui.separator();
+					side_panel_button(ui, SidePanelKind::Settings, '⛭');
 				});
 			});
 
@@ -145,7 +144,7 @@ impl App for AdhdMateriaApp {
 						ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
 							egui::Grid::new("task_grid")
 								.num_columns(1)
-								.spacing((40.0, 4.0))
+								.spacing((40.0, 12.0))
 								.striped(true)
 								.show(ui, |ui| {
 									for task in task_list.tasks_mut() {
@@ -174,7 +173,7 @@ impl App for AdhdMateriaApp {
 							ui.add_space(16.0);
 
 							if ui.button("New Task").clicked() {
-								if let Err(e) = task_list.new_task() {
+								if let Err(e) = task_list.add_task(Settings::get().default_task.clone()) {
 									crate::toasts()
 										.error(format!("Could not create task: {}", e))
 										.set_closable(true)

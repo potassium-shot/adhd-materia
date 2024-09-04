@@ -126,35 +126,39 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 						}
 					});
 				}
-				TaskState::Edit { .. } => {
+				TaskState::Edit { no_buttons, .. } => {
+					let no_buttons = *no_buttons;
+
 					ui.vertical(|ui| {
 						ui.horizontal(|ui| {
 							ui.text_edit_singleline(&mut self.task.name);
 
-							if ui
-								.button(
-									egui::RichText::from("💾")
-										.color(egui::Color32::from_rgb(0xAF, 0xAF, 0xFF)),
-								)
-								.on_hover_ui(|ui| {
-									ui.label("Save task");
-								})
-								.clicked()
-							{
-								self.task.display(path);
-							}
+							if !no_buttons {
+								if ui
+									.button(
+										egui::RichText::from("💾")
+											.color(egui::Color32::from_rgb(0xAF, 0xAF, 0xFF)),
+									)
+									.on_hover_ui(|ui| {
+										ui.label("Save task");
+									})
+									.clicked()
+								{
+									self.task.display(path);
+								}
 
-							if ui
-								.button(
-									egui::RichText::from("🗑")
-										.color(ui.style().visuals.error_fg_color),
-								)
-								.on_hover_ui(|ui| {
-									ui.label("Delete task");
-								})
-								.clicked()
-							{
-								set_pending_delete = true;
+								if ui
+									.button(
+										egui::RichText::from("🗑")
+											.color(ui.style().visuals.error_fg_color),
+									)
+									.on_hover_ui(|ui| {
+										ui.label("Delete task");
+									})
+									.clicked()
+								{
+									set_pending_delete = true;
+								}
 							}
 						});
 
@@ -194,7 +198,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 			})
 			.response;
 
-		if let TaskState::Edit { pending_delete } = &mut self.task.state {
+		if let TaskState::Edit { pending_delete, .. } = &mut self.task.state {
 			*pending_delete |= set_pending_delete;
 		}
 

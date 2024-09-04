@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use crate::{
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
+	settings::{self, Settings},
 	task::{
 		list::{TaskList, TaskListError},
 		scheduled::ScheduledTask,
@@ -18,6 +19,7 @@ pub enum SidePanel {
 		interactable: bool,
 	},
 	Scripts {},
+	Settings,
 }
 
 impl SidePanel {
@@ -127,6 +129,40 @@ impl SidePanel {
 
 				ui.label("Dinosaur haha");
 			}
+			Self::Settings => {
+				ui.heading("Settings");
+				ui.separator();
+				ui.add_space(16.0);
+
+				egui::Grid::new("settings_list")
+					.num_columns(2)
+					.spacing((40.0, 4.0))
+					.show(ui, |ui| {
+						let mut settings = Settings::get();
+
+						ui.label("Repeating task rewind");
+						egui::ComboBox::from_id_source("repeatable_rewind")
+							.selected_text(format!("{:?}", settings.repeatable_rewind))
+							.show_ui(ui, |ui| {
+								ui.selectable_value(
+									&mut settings.repeatable_rewind,
+									settings::RepeatableRewind::One,
+									"One",
+								);
+								ui.selectable_value(
+									&mut settings.repeatable_rewind,
+									settings::RepeatableRewind::All,
+									"All",
+								);
+							});
+						ui.end_row();
+
+						settings.default_task.edit_no_buttons();
+
+						ui.label("Default task");
+						ui.add(settings.default_task.widget());
+					});
+			}
 		}
 	}
 
@@ -162,6 +198,7 @@ impl SidePanel {
 				}
 			}
 			SidePanelKind::Scripts => Self::Scripts {},
+			SidePanelKind::Settings => Self::Settings,
 			SidePanelKind::Hidden => Self::Hidden,
 		}
 	}
@@ -178,6 +215,17 @@ impl SidePanel {
 				}
 			}
 			SidePanel::Scripts {} => {}
+			SidePanel::Settings => {
+				let mut settings = Settings::get();
+				settings.default_task.apply_tags();
+
+				if let Err(e) = settings.save() {
+					crate::toasts()
+						.error(format!("Could not save settings: {}", e))
+						.set_closable(true)
+						.set_duration(Some(Duration::from_millis(10_000)));
+				}
+			}
 		}
 	}
 
@@ -190,5 +238,11 @@ impl SidePanel {
 			Self::Hidden => false,
 			_ => true,
 		}
+	}
+}
+
+impl Drop for SidePanel {
+	fn drop(&mut self) {
+		self.close();
 	}
 }

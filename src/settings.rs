@@ -3,15 +3,16 @@ use std::{
 	sync::{LazyLock, Mutex, MutexGuard},
 };
 
-use crate::data_dir::DataDirError;
+use crate::{data_dir::DataDirError, task::Task};
 
 static SETTINGS: LazyLock<Mutex<Settings>> =
 	LazyLock::new(|| Mutex::new(Settings::load().unwrap_or_default()));
 
-#[derive(Debug, PartialEq, Eq, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Clone, Default, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct Settings {
-	repeatable_rewind: RepeatableRewind,
+	pub repeatable_rewind: RepeatableRewind,
+	pub default_task: Task,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]

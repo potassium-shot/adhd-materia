@@ -119,7 +119,7 @@ impl<T: TaskTypeData> Task<T> {
 		})
 	}
 
-	pub fn display(&mut self, path: TaskPath) {
+	pub fn apply_tags(&mut self) {
 		for tag in &mut self.tags {
 			if let Err(e) = tag.apply_text() {
 				crate::toasts()
@@ -128,6 +128,10 @@ impl<T: TaskTypeData> Task<T> {
 					.set_duration(Some(Duration::from_millis(10_000)));
 			}
 		}
+	}
+
+	pub fn display(&mut self, path: TaskPath) {
+		self.apply_tags();
 
 		if let Err(e) = self.save(path) {
 			crate::toasts()
@@ -142,12 +146,20 @@ impl<T: TaskTypeData> Task<T> {
 	pub fn edit(&mut self) {
 		self.state = TaskState::Edit {
 			pending_delete: false,
+			no_buttons: false,
 		};
+	}
+
+	pub fn edit_no_buttons(&mut self) {
+		self.state = TaskState::Edit {
+			pending_delete: false,
+			no_buttons: true,
+		}
 	}
 
 	pub fn is_pending_delete(&self) -> bool {
 		match self.state {
-			TaskState::Edit { pending_delete } => pending_delete,
+			TaskState::Edit { pending_delete, .. } => pending_delete,
 			_ => false,
 		}
 	}
@@ -175,6 +187,7 @@ enum TaskState {
 	Display,
 	Edit {
 		pending_delete: bool,
+		no_buttons: bool,
 	},
 }
 
@@ -198,7 +211,7 @@ pub trait TaskTypeData:
 {
 }
 
-#[derive(Debug, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct NormalTaskData;
 
 impl TaskTypeData for NormalTaskData {}
