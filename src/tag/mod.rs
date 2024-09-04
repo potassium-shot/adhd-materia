@@ -108,7 +108,14 @@ impl FromStr for Tag {
 	type Err = TagError;
 
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
-		Self::parse(&mut TagStringChars::new(s))
+		let mut chars = TagStringChars::new(s);
+		let result = Self::parse(&mut chars)?;
+
+		if let Some(c) = chars.next() {
+			Err(TagError::ExpectedEnd(c))
+		} else {
+			Ok(result)
+		}
 	}
 }
 
@@ -117,7 +124,7 @@ impl Tag {
 		let first_char = chars.next().ok_or(TagError::EmptyTag)?;
 		let mut name = String::new();
 
-		if !(first_char.is_alphabetic() || first_char == '_') {
+		if !((first_char >= 'a' && first_char <= 'z') || first_char == '_') {
 			return Err(TagError::InvalidFirstChar(first_char));
 		}
 
@@ -135,11 +142,14 @@ impl Tag {
 					if chars.next().unwrap_or(' ') != ')' {
 						return Err(TagError::UnclosedParen);
 					}
+
+					break;
 				}
-				alphanum_ if alphanum_.is_alphanumeric() || alphanum_ == '_' => {
+				'a'..='z' | '0'..='9' | '_' => {
 					chars.next().expect("peek returned some");
-					name.push(alphanum_);
+					name.push(c);
 				}
+				'A'..='Z' => return Err(TagError::InvalidTagName),
 				_ => {
 					break;
 				}
@@ -425,6 +435,9 @@ pub enum TagError {
 	#[error("Tag value must begin with a letter or _ for tags, a number, or \"/' for text, but here started with `{0}`")]
 	InvalidFirstValueChar(char),
 
+	#[error("Tag name must only contain lowercase letters, numbers and _")]
+	InvalidTagName,
+
 	#[error("Unclosed parenthesis")]
 	UnclosedParen,
 
@@ -451,6 +464,9 @@ pub enum TagError {
 
 	#[error("Missing comma in list/dictionary")]
 	MissingComma,
+
+	#[error("Expected end of tag, but found character `{0}`")]
+	ExpectedEnd(char),
 }
 
 #[cfg(test)]
@@ -461,11 +477,11 @@ mod tests {
 	fn de_ser() {
 		let base = [
 			"some_funny_tag(-45.3)",
-			"_The_Tag(OtherTag(\"lol\"))",
+			"_the_tag(othertag(\"lol\"))",
 			"emptytag",
 			"empty_list_value([])",
 			"list([\"haha\", 4.5])",
-			"nested([[\"lol\", 23], OtherTag([])])",
+			"nested([[\"lol\", 23], othertag([])])",
 		];
 
 		let dict_test = "dict({\"lol\": 4, \"haha\": inner_tag(4.53)})";
@@ -490,12 +506,14 @@ mod tests {
 	#[test]
 	fn errors() {
 		let base = [
-			"3InvalidTag",
-			"Unclosed(",
-			"InvalidValue(')",
-			"UnclosedList([)",
-			"MoreCommas([43, , 5.4])",
-			"MissingComma([\"hello\" 54])",
+			"3invalidtag",
+			"unclosed(",
+			"invalidvalue(')",
+			"unclosedlist([)",
+			"morecommas([43, , 5.4])",
+			"missingcomma([\"hello\" 54])",
+			"name_Invalid",
+			"extra_stuff(\"lol\")abc",
 		];
 
 		let errors: Vec<TagError> = base
@@ -510,6 +528,8 @@ mod tests {
 			TagError::InvalidFirstValueChar(')'),
 			TagError::RepeatedComma,
 			TagError::MissingComma,
+			TagError::InvalidTagName,
+			TagError::ExpectedEnd('a'),
 		];
 
 		errors
