@@ -1,4 +1,7 @@
-use crate::tag::Tag;
+use crate::{
+	settings::{self, Settings},
+	tag::Tag,
+};
 
 use super::{
 	scheduled::{RepeatMode, ScheduledTask},
@@ -34,7 +37,9 @@ impl egui::Widget for TaskWidget<'_, ScheduledTask> {
 					match self.task.state {
 						TaskState::Display => {
 							ui.horizontal_top(|ui| {
-								ui.add(egui::Checkbox::without_text(&mut self.task.type_data.active));
+								ui.add(egui::Checkbox::without_text(
+									&mut self.task.type_data.active,
+								));
 
 								ui.strong(format!(
 									"{}, {}",
@@ -101,12 +106,30 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 				TaskState::Display => {
 					ui.vertical(|ui| {
 						ui.horizontal(|ui| {
+							let done_tag = Settings::get_done_tag();
+
+							ui.add_enabled_ui(!self.task.tags.contains(&done_tag), |ui| {
+								let bg_color = ui.visuals().hyperlink_color;
+								let fg_color = ui.visuals().window_fill;
+
+								ui.visuals_mut().override_text_color = Some(fg_color);
+								ui.visuals_mut().widgets.inactive.weak_bg_fill = bg_color;
+								ui.visuals_mut().widgets.active.weak_bg_fill = bg_color;
+								ui.visuals_mut().widgets.hovered.weak_bg_fill = bg_color;
+
+								if ui.button(egui::RichText::new("✅").size(20.0)).clicked() {
+									self.task.tags.push(done_tag.clone());
+								}
+							});
+
+							ui.separator();
+
 							ui.label(egui::RichText::from(self.task.name.as_str()).heading());
 
 							if ui
 								.button(
 									egui::RichText::from("✏")
-										.color(egui::Color32::from_rgb(0xFF, 0xD0, 0x70)),
+										.color(ui.style().visuals.warn_fg_color),
 								)
 								.on_hover_ui(|ui| {
 									ui.label("Edit task");

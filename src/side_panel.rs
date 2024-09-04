@@ -259,6 +259,10 @@ impl SidePanel {
 							ui.label("Delete scheduled tasks that have been used and are never to be triggered again.");
 						});
 						ui.end_row();
+
+						ui.label("Done tag name");
+						ui.text_edit_singleline(settings.get_done_tag_string_mut().as_mut());
+						ui.end_row();
 					});
 			}
 		}

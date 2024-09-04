@@ -8,7 +8,7 @@ use ui::TagWidget;
 
 mod ui;
 
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Tag {
 	name: String,
 	value: Option<TagValue>,
@@ -35,6 +35,12 @@ impl Default for Tag {
 			value: None,
 			editing_text: None,
 		}
+	}
+}
+
+impl PartialEq for Tag {
+	fn eq(&self, other: &Self) -> bool {
+		self.name == other.name && self.value == other.value
 	}
 }
 
