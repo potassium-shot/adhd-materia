@@ -57,6 +57,10 @@ impl<T: TaskTypeData> Task<T> {
 		&self.uuid
 	}
 
+	pub fn new_uuid(&mut self) {
+		self.uuid = Uuid::new_v4();
+	}
+
 	pub fn load_from_path(path: impl AsRef<Path>) -> Result<Self, TaskErrorKind> {
 		let path = path.as_ref();
 		let mut result = Self::from_str(std::fs::read_to_string(path)?.as_str())?;

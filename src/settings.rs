@@ -8,11 +8,22 @@ use crate::{data_dir::DataDirError, task::Task};
 static SETTINGS: LazyLock<Mutex<Settings>> =
 	LazyLock::new(|| Mutex::new(Settings::load().unwrap_or_default()));
 
-#[derive(Debug, PartialEq, Clone, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct Settings {
 	pub repeatable_rewind: RepeatableRewind,
 	pub default_task: Task,
+	pub scheduled_task_tag: String,
+}
+
+impl Default for Settings {
+	fn default() -> Self {
+		Self {
+			repeatable_rewind: RepeatableRewind::default(),
+			default_task: Task::default(),
+			scheduled_task_tag: String::from("scheduled_on($DATE)"),
+		}
+	}
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default, serde::Serialize, serde::Deserialize)]

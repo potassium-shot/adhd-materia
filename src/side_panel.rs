@@ -136,7 +136,7 @@ impl SidePanel {
 
 				egui::Grid::new("settings_list")
 					.num_columns(2)
-					.spacing((40.0, 4.0))
+					.spacing((40.0, 8.0))
 					.show(ui, |ui| {
 						let mut settings = Settings::get();
 
@@ -154,6 +154,13 @@ impl SidePanel {
 									settings::RepeatableRewind::All,
 									"All",
 								);
+							})
+							.response
+							.on_hover_ui(|ui| {
+								ui.label(
+									"When a repeating task should have triggered more than once, \
+									One will make it trigger once, and All will make it trigger all times",
+								);
 							});
 						ui.end_row();
 
@@ -161,6 +168,13 @@ impl SidePanel {
 
 						ui.label("Default task");
 						ui.add(settings.default_task.widget());
+						ui.end_row();
+
+						ui.label("Scheduled task tag");
+						ui.text_edit_singleline(&mut settings.scheduled_task_tag)
+							.on_hover_ui(|ui| {
+								ui.label("Tag to apply to scheduled tasks, $DATE is replaced by the scheduled date");
+							});
 					});
 			}
 		}
