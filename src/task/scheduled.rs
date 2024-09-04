@@ -4,11 +4,22 @@ use crate::session::Session;
 
 use super::TaskTypeData;
 
-#[derive(Debug, PartialEq, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct ScheduledTask {
+	pub active: bool,
 	pub date: chrono::NaiveDate,
 	pub repeat_mode: RepeatMode,
+}
+
+impl Default for ScheduledTask {
+	fn default() -> Self {
+		Self {
+			active: true,
+			date: chrono::Local::now().date_naive(),
+			repeat_mode: RepeatMode::Never,
+		}
+	}
 }
 
 impl TaskTypeData for ScheduledTask {}
@@ -25,7 +36,7 @@ impl ScheduledTask {
 	}
 
 	pub fn spawn_count_at(&self, today: NaiveDate, last_seen: NaiveDate) -> i32 {
-		if today < self.date {
+		if !self.active || today < self.date {
 			return 0;
 		}
 
@@ -152,13 +163,17 @@ pub enum RepeatMode {
 
 impl std::fmt::Display for RepeatMode {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(f, "{}", match self {
-			RepeatMode::Never=>"not repeated",
-			RepeatMode::Daily => "repeated daily",
-			RepeatMode::Weekly => "repeated weekly",
-			RepeatMode::Monthly => "repeated monthly",
-			RepeatMode::Yearly => "repeated yearly",
-		})
+		write!(
+			f,
+			"{}",
+			match self {
+				RepeatMode::Never => "not repeated",
+				RepeatMode::Daily => "repeated daily",
+				RepeatMode::Weekly => "repeated weekly",
+				RepeatMode::Monthly => "repeated monthly",
+				RepeatMode::Yearly => "repeated yearly",
+			}
+		)
 	}
 }
 
@@ -177,6 +192,7 @@ mod tests {
 		let d = ScheduledTask {
 			date: date!(2024, 1, 5),
 			repeat_mode: RepeatMode::Never,
+			active: true,
 		};
 
 		assert_eq!(d.spawn_count_at(date!(2024, 1, 8), date!(2024, 1, 1)), 1);
@@ -187,6 +203,7 @@ mod tests {
 		let d = ScheduledTask {
 			date: date!(2024, 1, 5),
 			repeat_mode: RepeatMode::Daily,
+			active: true,
 		};
 
 		assert_eq!(d.spawn_count_at(date!(2024, 1, 8), date!(2024, 1, 1)), 4);
@@ -197,6 +214,7 @@ mod tests {
 		let d = ScheduledTask {
 			date: date!(2024, 1, 5),
 			repeat_mode: RepeatMode::Weekly,
+			active: true,
 		};
 
 		assert_eq!(d.spawn_count_at(date!(2024, 1, 23), date!(2024, 1, 1)), 3);
@@ -207,6 +225,7 @@ mod tests {
 		let d = ScheduledTask {
 			date: date!(2024, 1, 5),
 			repeat_mode: RepeatMode::Monthly,
+			active: true,
 		};
 
 		assert_eq!(d.spawn_count_at(date!(2024, 4, 23), date!(2024, 1, 1)), 4);
@@ -217,6 +236,7 @@ mod tests {
 		let d = ScheduledTask {
 			date: date!(2024, 1, 16),
 			repeat_mode: RepeatMode::Monthly,
+			active: true,
 		};
 
 		assert_eq!(d.spawn_count_at(date!(2024, 7, 4), date!(2024, 1, 16)), 5);
@@ -227,6 +247,7 @@ mod tests {
 		let d = ScheduledTask {
 			date: date!(2024, 4, 16),
 			repeat_mode: RepeatMode::Yearly,
+			active: true,
 		};
 
 		assert_eq!(d.spawn_count_at(date!(2027, 10, 6), date!(2024, 1, 12)), 4);

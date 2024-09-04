@@ -25,14 +25,22 @@ impl egui::Widget for TaskWidget<'_, ScheduledTask> {
 	fn ui(mut self, ui: &mut egui::Ui) -> egui::Response {
 		let uuid = self.task.get_uuid().clone();
 		ui.push_id(uuid, |ui| {
+			if !self.task.type_data.active {
+				ui.set_opacity(0.5);
+			}
+
 			ui.group(|ui| {
 				ui.vertical(|ui| {
 					match self.task.state {
 						TaskState::Display => {
-							ui.strong(format!(
-								"{}, {}",
-								self.task.type_data.date, self.task.type_data.repeat_mode
-							));
+							ui.horizontal_top(|ui| {
+								ui.add(egui::Checkbox::without_text(&mut self.task.type_data.active));
+
+								ui.strong(format!(
+									"{}, {}",
+									self.task.type_data.date, self.task.type_data.repeat_mode
+								));
+							});
 						}
 						TaskState::Edit { .. } => {
 							ui.horizontal(|ui| {
