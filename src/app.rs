@@ -3,10 +3,14 @@ use std::time::Duration;
 use eframe::{App, CreationContext};
 
 use crate::{
-	ok_cancel_dialog::{OkCancelDialog, OkCancelResult}, settings::Settings, side_panel::{SidePanel, SidePanelKind}, startup_script::StartupScript, task::{
+	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
+	settings::Settings,
+	side_panel::{SidePanel, SidePanelKind},
+	startup_script::StartupScript,
+	task::{
 		list::{TaskList, TaskListError},
 		TaskPath,
-	}
+	},
 };
 
 pub struct AdhdMateriaApp {
@@ -142,44 +146,46 @@ impl App for AdhdMateriaApp {
 				match &mut self.task_list {
 					Ok(task_list) => {
 						ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
-							egui::Grid::new("task_grid")
-								.num_columns(1)
-								.spacing((40.0, 12.0))
-								.striped(true)
-								.show(ui, |ui| {
-									for task in task_list.tasks_mut() {
-										ui.add(task.widget());
-										ui.end_row();
+							egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
+								egui::Grid::new("task_grid")
+									.num_columns(1)
+									.spacing((40.0, 12.0))
+									.striped(true)
+									.show(ui, |ui| {
+										for task in task_list.tasks_mut() {
+											ui.add(task.widget());
+											ui.end_row();
 
-										if task.is_pending_delete() {
-											self.interactable = false;
+											if task.is_pending_delete() {
+												self.interactable = false;
 
-											if let Some(result) = OkCancelDialog::default()
-												.with_title(format!("Delete task {}?", task.name))
-												.with_subtext("You cannot undo this action.")
-												.with_ok_text("Delete")
-												.with_ok_color(ui.style().visuals.error_fg_color)
-												.show(ctx)
-											{
-												match result {
-													OkCancelResult::Ok => task.mark_for_delete(),
-													OkCancelResult::Cancel => task.edit(),
+												if let Some(result) = OkCancelDialog::default()
+													.with_title(format!("Delete task {}?", task.name))
+													.with_subtext("You cannot undo this action.")
+													.with_ok_text("Delete")
+													.with_ok_color(ui.style().visuals.error_fg_color)
+													.show(ctx)
+												{
+													match result {
+														OkCancelResult::Ok => task.mark_for_delete(),
+														OkCancelResult::Cancel => task.edit(),
+													}
 												}
 											}
 										}
+									});
+
+								ui.add_space(16.0);
+
+								if ui.button("New Task").clicked() {
+									if let Err(e) = task_list.add_task(Settings::get().default_task.clone()) {
+										crate::toasts()
+											.error(format!("Could not create task: {}", e))
+											.set_closable(true)
+											.set_duration(Some(Duration::from_millis(10_000)));
 									}
-								});
-
-							ui.add_space(16.0);
-
-							if ui.button("New Task").clicked() {
-								if let Err(e) = task_list.add_task(Settings::get().default_task.clone()) {
-									crate::toasts()
-										.error(format!("Could not create task: {}", e))
-										.set_closable(true)
-										.set_duration(Some(Duration::from_millis(10_000)));
 								}
-							}
+							});
 						});
 
 						for e in task_list.cleanup_marked_for_delete() {
