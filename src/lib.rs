@@ -7,6 +7,7 @@ mod side_panel;
 mod startup_script;
 mod tag;
 mod task;
+mod utils;
 
 use std::sync::{LazyLock, Mutex, MutexGuard};
 

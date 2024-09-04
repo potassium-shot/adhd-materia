@@ -1,6 +1,7 @@
 use crate::{
-	settings::{self, Settings},
+	settings::{self, Settings, DEFAULT_DATE_FORMAT},
 	tag::Tag,
+	utils::ChronoDelayFormatExt,
 };
 
 use super::{
@@ -43,7 +44,18 @@ impl egui::Widget for TaskWidget<'_, ScheduledTask> {
 
 								ui.strong(format!(
 									"{}, {}",
-									self.task.type_data.date, self.task.type_data.repeat_mode
+									self.task
+										.type_data
+										.date
+										.format_or_err(Settings::get().date_format.as_str())
+										.unwrap_or(
+											self.task
+												.type_data
+												.date
+												.format(DEFAULT_DATE_FORMAT)
+												.to_string()
+										),
+									self.task.type_data.repeat_mode
 								));
 							});
 						}

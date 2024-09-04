@@ -8,6 +8,7 @@ use convert_case::Casing;
 use crate::{data_dir::DataDirError, tag::Tag, task::Task};
 
 pub const DEFAULT_SCHEDULED_TASK_TAG: &str = "scheduled_on($DATE)";
+pub const DEFAULT_DATE_FORMAT: &str = "%a. %-d %b. %Y";
 pub const DEFAULT_DONE_TAG: &str = "done";
 
 static SETTINGS: LazyLock<Mutex<Settings>> =
@@ -29,6 +30,7 @@ pub struct Settings {
 	pub repeatable_rewind: RepeatableRewind,
 	pub scheduled_task_tag: Option<String>,
 	pub delete_used_scheduled_tasks: bool,
+	pub date_format: String,
 	done_tag: String,
 }
 
@@ -40,6 +42,7 @@ impl Default for Settings {
 			repeatable_rewind: RepeatableRewind::default(),
 			scheduled_task_tag: Some(String::from(DEFAULT_SCHEDULED_TASK_TAG)),
 			delete_used_scheduled_tasks: true,
+			date_format: String::from(DEFAULT_DATE_FORMAT),
 			done_tag: String::from(DEFAULT_DONE_TAG),
 		}
 	}

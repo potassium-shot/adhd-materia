@@ -2,6 +2,11 @@ use std::sync::LazyLock;
 
 use convert_case::Casing;
 
+use crate::{
+	settings::{Settings, DEFAULT_DATE_FORMAT},
+	utils::ChronoDelayFormatExt,
+};
+
 use super::{Tag, TagValue};
 
 static COLORHASH: LazyLock<colorhash::ColorHash> = LazyLock::new(|| colorhash::ColorHash::new());
@@ -81,7 +86,9 @@ impl TagWidget<'_> {
 						ui.label(match other {
 							TagValue::Int(i) => i.to_string(),
 							TagValue::Float(f) => f.to_string(),
-							TagValue::Date(d) => d.to_string(),
+							TagValue::Date(d) => d
+								.format_or_err(Settings::get().date_format.as_str())
+								.unwrap_or(d.format(DEFAULT_DATE_FORMAT).to_string()),
 							TagValue::Text(t) => t.clone(),
 							TagValue::List(_) | TagValue::Dictionary(_) | TagValue::Tag(_) => {
 								unreachable!("already handled")

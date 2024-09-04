@@ -260,6 +260,17 @@ impl SidePanel {
 						});
 						ui.end_row();
 
+						ui.horizontal(|ui| {
+							ui.label("Date format");
+							if ui.link(egui::RichText::new("reference").color(ui.visuals().hyperlink_color)).clicked() {
+								ui.output_mut(|o| {
+									o.open_url = Some(egui::OpenUrl::new_tab("https://docs.rs/chrono/latest/chrono/format/strftime/index.html"));
+								});
+							}
+						});
+						ui.text_edit_singleline(&mut settings.date_format);
+						ui.end_row();
+
 						ui.label("Done tag name");
 						ui.text_edit_singleline(settings.get_done_tag_string_mut().as_mut());
 						ui.end_row();
