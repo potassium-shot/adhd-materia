@@ -5,6 +5,8 @@ use std::{
 
 use crate::{data_dir::DataDirError, task::Task};
 
+pub const DEFAULT_SCHEDULED_TASK_TAG: &str = "scheduled_on($DATE)";
+
 static SETTINGS: LazyLock<Mutex<Settings>> =
 	LazyLock::new(|| Mutex::new(Settings::load().unwrap_or_default()));
 
@@ -13,7 +15,7 @@ static SETTINGS: LazyLock<Mutex<Settings>> =
 pub struct Settings {
 	pub default_task: Task,
 	pub repeatable_rewind: RepeatableRewind,
-	pub scheduled_task_tag: String,
+	pub scheduled_task_tag: Option<String>,
 	pub delete_used_scheduled_tasks: bool,
 }
 
@@ -22,7 +24,7 @@ impl Default for Settings {
 		Self {
 			default_task: Task::default(),
 			repeatable_rewind: RepeatableRewind::default(),
-			scheduled_task_tag: String::from("scheduled_on($DATE)"),
+			scheduled_task_tag: Some(String::from(DEFAULT_SCHEDULED_TASK_TAG)),
 			delete_used_scheduled_tasks: true,
 		}
 	}

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::{
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
-	settings::{self, Settings},
+	settings::{self, Settings, DEFAULT_SCHEDULED_TASK_TAG},
 	task::{
 		list::{TaskList, TaskListError},
 		scheduled::ScheduledTask,
@@ -140,6 +140,8 @@ impl SidePanel {
 					.show(ui, |ui| {
 						let mut settings = Settings::get();
 
+						settings.default_task.edit_no_buttons();
+
 						ui.label("Default task");
 						ui.add(settings.default_task.widget());
 						ui.end_row();
@@ -168,19 +170,49 @@ impl SidePanel {
 							});
 						ui.end_row();
 
-						settings.default_task.edit_no_buttons();
-
 						ui.label("Scheduled task tag");
-						ui.text_edit_singleline(&mut settings.scheduled_task_tag)
+
+						ui.horizontal(|ui| {
+							let mut scheduled_task_tag_enabled =
+								settings.scheduled_task_tag.is_some();
+							let mut scheduled_task_tag =
+								settings.scheduled_task_tag.clone().unwrap_or_default();
+
+							ui.add(egui::Checkbox::without_text(
+								&mut scheduled_task_tag_enabled,
+							));
+							ui.add_enabled(
+								scheduled_task_tag_enabled,
+								egui::TextEdit::singleline(&mut scheduled_task_tag),
+							)
 							.on_hover_ui(|ui| {
 								ui.label("Tag to apply to scheduled tasks, $DATE is replaced by the scheduled date");
 							});
+
+							if let Some(tag) = &mut settings.scheduled_task_tag {
+								*tag = scheduled_task_tag;
+							}
+
+							if scheduled_task_tag_enabled {
+								if settings.scheduled_task_tag.is_none() {
+									settings.scheduled_task_tag =
+										Some(String::from(DEFAULT_SCHEDULED_TASK_TAG));
+								}
+							} else {
+								settings.scheduled_task_tag = None;
+							}
+						});
+
 						ui.end_row();
 
 						ui.label("Delete used scheduled tasks");
-						ui.add(egui::Checkbox::without_text(&mut settings.delete_used_scheduled_tasks)).on_hover_ui(|ui| {
+						ui.add(egui::Checkbox::without_text(
+							&mut settings.delete_used_scheduled_tasks,
+						))
+						.on_hover_ui(|ui| {
 							ui.label("Delete scheduled tasks that have been used and are never to be triggered again.");
 						});
+						ui.end_row();
 					});
 			}
 		}

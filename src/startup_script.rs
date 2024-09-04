@@ -31,12 +31,12 @@ impl StartupScript {
 				let mut new_task = task.clone().convert(NormalTaskData::default());
 				new_task.new_uuid();
 
-				if let Ok(tag) = Tag::from_str(
-					&Settings::get()
-						.scheduled_task_tag
-						.replace("$DATE", today.to_string().as_str()),
-				) {
-					new_task.tags.push(tag);
+				if let Some(scheduled_task_tag) = &Settings::get().scheduled_task_tag {
+					if let Ok(tag) = Tag::from_str(
+						&scheduled_task_tag.replace("$DATE", today.to_string().as_str()),
+					) {
+						new_task.tags.push(tag);
+					}
 				}
 
 				if let Err(e) = task_list.add_task(new_task) {
