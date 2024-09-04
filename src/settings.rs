@@ -3,6 +3,8 @@ use std::{
 	sync::{LazyLock, Mutex, MutexGuard},
 };
 
+use convert_case::Casing;
+
 use crate::{data_dir::DataDirError, task::Task};
 
 pub const DEFAULT_SCHEDULED_TASK_TAG: &str = "scheduled_on($DATE)";
@@ -13,6 +15,7 @@ static SETTINGS: LazyLock<Mutex<Settings>> =
 #[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct Settings {
+	pub theme: AdhdMateriaTheme,
 	pub default_task: Task,
 	pub repeatable_rewind: RepeatableRewind,
 	pub scheduled_task_tag: Option<String>,
@@ -22,6 +25,7 @@ pub struct Settings {
 impl Default for Settings {
 	fn default() -> Self {
 		Self {
+			theme: AdhdMateriaTheme::default(),
 			default_task: Task::default(),
 			repeatable_rewind: RepeatableRewind::default(),
 			scheduled_task_tag: Some(String::from(DEFAULT_SCHEDULED_TASK_TAG)),
@@ -35,6 +39,72 @@ pub enum RepeatableRewind {
 	#[default]
 	One,
 	All,
+}
+
+#[derive(
+	Debug, PartialEq, Eq, Hash, Clone, Copy, Default, serde::Serialize, serde::Deserialize,
+)]
+pub enum AdhdMateriaTheme {
+	CatppuccinLatte,
+	CatppuccinFrappe,
+	#[default]
+	CatppuccinMacchiato,
+	CatppuccinMocha,
+}
+
+static THEME_NAMES: LazyLock<std::collections::HashMap<AdhdMateriaTheme, String>> =
+	LazyLock::new(|| {
+		use AdhdMateriaTheme::*;
+
+		let mut map = std::collections::HashMap::new();
+
+		for theme in [
+			CatppuccinLatte,
+			CatppuccinFrappe,
+			CatppuccinMacchiato,
+			CatppuccinMocha,
+		] {
+			map.insert(
+				theme,
+				format!("{:?}", theme).to_case(convert_case::Case::Title),
+			);
+		}
+
+		map
+	});
+
+impl std::fmt::Display for AdhdMateriaTheme {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(f, "{}", THEME_NAMES[self])
+	}
+}
+
+impl AdhdMateriaTheme {
+	pub fn apply(&self, ctx: &egui::Context) {
+		match self {
+			AdhdMateriaTheme::CatppuccinLatte => {
+				catppuccin_egui::set_theme(ctx, catppuccin_egui::LATTE)
+			}
+			AdhdMateriaTheme::CatppuccinFrappe => {
+				catppuccin_egui::set_theme(ctx, catppuccin_egui::FRAPPE)
+			}
+			AdhdMateriaTheme::CatppuccinMacchiato => {
+				catppuccin_egui::set_theme(ctx, catppuccin_egui::MACCHIATO)
+			}
+			AdhdMateriaTheme::CatppuccinMocha => {
+				catppuccin_egui::set_theme(ctx, catppuccin_egui::MOCHA)
+			}
+		}
+	}
+
+	pub fn is_dark(&self) -> bool {
+		match self {
+			AdhdMateriaTheme::CatppuccinLatte => false,
+			AdhdMateriaTheme::CatppuccinFrappe => true,
+			AdhdMateriaTheme::CatppuccinMacchiato => true,
+			AdhdMateriaTheme::CatppuccinMocha => true,
+		}
+	}
 }
 
 impl Settings {

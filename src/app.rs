@@ -23,7 +23,7 @@ pub struct AdhdMateriaApp {
 impl AdhdMateriaApp {
 	pub fn new(cc: &CreationContext) -> Self {
 		// Enable catppuccin theme
-		catppuccin_egui::set_theme(&cc.egui_ctx, catppuccin_egui::MACCHIATO);
+		Settings::get().theme.apply(&cc.egui_ctx);
 
 		// Setup Nunito font
 		const NUNITO_REGULAR: &str = "nunito_regular";
@@ -95,7 +95,11 @@ impl App for AdhdMateriaApp {
 									egui::Button::new(
 										egui::RichText::from(c.to_string()).size(32.0).color(
 											if self.side_panel.kind() == kind {
-												egui::Color32::WHITE
+												if Settings::get().theme.is_dark() {
+													egui::Color32::WHITE
+												} else {
+													egui::Color32::BLACK
+												}
 											} else {
 												egui::Color32::PLACEHOLDER
 											},

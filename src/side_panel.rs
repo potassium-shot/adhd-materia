@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::{
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
-	settings::{self, Settings, DEFAULT_SCHEDULED_TASK_TAG},
+	settings::{self, AdhdMateriaTheme, Settings, DEFAULT_SCHEDULED_TASK_TAG},
 	task::{
 		list::{TaskList, TaskListError},
 		scheduled::ScheduledTask,
@@ -139,6 +139,52 @@ impl SidePanel {
 					.spacing((40.0, 8.0))
 					.show(ui, |ui| {
 						let mut settings = Settings::get();
+
+						ui.label("Theme");
+
+						if egui::ComboBox::from_id_source("theme_selector")
+							.selected_text(format!("{}", settings.theme))
+							.show_ui(ui, |ui| {
+								let mut changed = false;
+
+								changed |= ui
+									.selectable_value(
+										&mut settings.theme,
+										AdhdMateriaTheme::CatppuccinLatte,
+										format!("{}", AdhdMateriaTheme::CatppuccinLatte),
+									)
+									.clicked();
+								changed |= ui
+									.selectable_value(
+										&mut settings.theme,
+										AdhdMateriaTheme::CatppuccinFrappe,
+										format!("{}", AdhdMateriaTheme::CatppuccinFrappe),
+									)
+									.clicked();
+								changed |= ui
+									.selectable_value(
+										&mut settings.theme,
+										AdhdMateriaTheme::CatppuccinMacchiato,
+										format!("{}", AdhdMateriaTheme::CatppuccinMacchiato),
+									)
+									.clicked();
+								changed |= ui
+									.selectable_value(
+										&mut settings.theme,
+										AdhdMateriaTheme::CatppuccinMocha,
+										format!("{}", AdhdMateriaTheme::CatppuccinMocha),
+									)
+									.clicked();
+
+								changed
+							})
+							.inner
+							.is_some_and(|b| b)
+						{
+							settings.theme.apply(ui.ctx());
+						}
+
+						ui.end_row();
 
 						settings.default_task.edit_no_buttons();
 
