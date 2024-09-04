@@ -79,6 +79,7 @@ impl TagWidget<'_> {
 						ui.label(match other {
 							TagValue::Int(i) => i.to_string(),
 							TagValue::Float(f) => f.to_string(),
+							TagValue::Date(d) => d.to_string(),
 							TagValue::Text(t) => t.clone(),
 							TagValue::List(_) | TagValue::Dictionary(_) | TagValue::Tag(_) => {
 								unreachable!("already handled")

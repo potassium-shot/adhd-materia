@@ -3,6 +3,7 @@ use std::{
 	str::{Chars, FromStr},
 };
 
+use chrono::NaiveDate;
 use ui::TagWidget;
 
 mod ui;
@@ -20,6 +21,7 @@ pub struct Tag {
 pub enum TagValue {
 	Int(i64),
 	Float(f64),
+	Date(NaiveDate),
 	Text(String),
 	List(Vec<TagValue>),
 	Dictionary(HashMap<String, TagValue>),
@@ -211,12 +213,16 @@ impl TagValue {
 					}
 				}
 
-				if let Ok(int) = s.parse::<i64>() {
-					Ok(Self::Int(int))
+				if let Ok(date) = s.parse::<NaiveDate>() {
+					Ok(Self::Date(date))
 				} else {
-					match s.parse::<f64>() {
-						Ok(float) => Ok(Self::Float(float)),
-						Err(e) => Err(TagError::CantParseNumber(e)),
+					if let Ok(int) = s.parse::<i64>() {
+						Ok(Self::Int(int))
+					} else {
+						match s.parse::<f64>() {
+							Ok(float) => Ok(Self::Float(float)),
+							Err(e) => Err(TagError::CantParseNumber(e)),
+						}
 					}
 				}
 			}
@@ -373,6 +379,7 @@ impl ToString for TagValue {
 			Self::Text(text) => format!("\"{}\"", text),
 			Self::Int(int) => int.to_string(),
 			Self::Float(float) => float.to_string(),
+			Self::Date(date) => date.to_string(),
 			Self::List(list) => {
 				let mut inner = list
 					.iter()
