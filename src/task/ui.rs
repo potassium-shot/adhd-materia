@@ -1,5 +1,5 @@
 use crate::{
-	settings::{self, Settings, DEFAULT_DATE_FORMAT},
+	settings::{Settings, DEFAULT_DATE_FORMAT},
 	tag::Tag,
 	utils::ChronoDelayFormatExt,
 };
@@ -15,7 +15,7 @@ pub struct TaskWidget<'task, T> {
 
 impl egui::Widget for TaskWidget<'_, NormalTaskData> {
 	fn ui(mut self, ui: &mut egui::Ui) -> egui::Response {
-		self.draw_task_widget(ui, TaskPath::Tasks)
+		self.draw_task_widget(ui, TaskPath::Tasks, true)
 	}
 }
 
@@ -100,7 +100,7 @@ impl egui::Widget for TaskWidget<'_, ScheduledTask> {
 							});
 						}
 					}
-					self.draw_task_widget(ui, TaskPath::Scheduled);
+					self.draw_task_widget(ui, TaskPath::Scheduled, false);
 				});
 			})
 			.response
@@ -110,7 +110,12 @@ impl egui::Widget for TaskWidget<'_, ScheduledTask> {
 }
 
 impl<T: TaskTypeData> TaskWidget<'_, T> {
-	fn draw_task_widget(&mut self, ui: &mut egui::Ui, path: TaskPath) -> egui::Response {
+	fn draw_task_widget(
+		&mut self,
+		ui: &mut egui::Ui,
+		path: TaskPath,
+		can_be_done: bool,
+	) -> egui::Response {
 		let mut set_pending_delete = false;
 
 		let response = ui
@@ -118,23 +123,25 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 				TaskState::Display => {
 					ui.vertical(|ui| {
 						ui.horizontal(|ui| {
-							let done_tag = Settings::get_done_tag();
+							if can_be_done {
+								let done_tag = Settings::get_done_tag();
 
-							ui.add_enabled_ui(!self.task.tags.contains(&done_tag), |ui| {
-								let bg_color = ui.visuals().hyperlink_color;
-								let fg_color = ui.visuals().window_fill;
+								ui.add_enabled_ui(!self.task.tags.contains(&done_tag), |ui| {
+									let bg_color = ui.visuals().hyperlink_color;
+									let fg_color = ui.visuals().window_fill;
 
-								ui.visuals_mut().override_text_color = Some(fg_color);
-								ui.visuals_mut().widgets.inactive.weak_bg_fill = bg_color;
-								ui.visuals_mut().widgets.active.weak_bg_fill = bg_color;
-								ui.visuals_mut().widgets.hovered.weak_bg_fill = bg_color;
+									ui.visuals_mut().override_text_color = Some(fg_color);
+									ui.visuals_mut().widgets.inactive.weak_bg_fill = bg_color;
+									ui.visuals_mut().widgets.active.weak_bg_fill = bg_color;
+									ui.visuals_mut().widgets.hovered.weak_bg_fill = bg_color;
 
-								if ui.button(egui::RichText::new("✅").size(20.0)).clicked() {
-									self.task.tags.push(done_tag.clone());
-								}
-							});
+									if ui.button(egui::RichText::new("✅").size(20.0)).clicked() {
+										self.task.tags.push(done_tag.clone());
+									}
+								});
 
-							ui.separator();
+								ui.separator();
+							}
 
 							ui.label(egui::RichText::from(self.task.name.as_str()).heading());
 
