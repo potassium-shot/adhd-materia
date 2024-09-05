@@ -95,19 +95,15 @@ impl std::fmt::Display for AdhdMateriaTheme {
 
 impl AdhdMateriaTheme {
 	pub fn apply(&self, ctx: &egui::Context) {
+		catppuccin_egui::set_theme(ctx, self.get_catppuccin());
+	}
+
+	pub fn get_catppuccin(&self) -> catppuccin_egui::Theme {
 		match self {
-			AdhdMateriaTheme::CatppuccinLatte => {
-				catppuccin_egui::set_theme(ctx, catppuccin_egui::LATTE)
-			}
-			AdhdMateriaTheme::CatppuccinFrappe => {
-				catppuccin_egui::set_theme(ctx, catppuccin_egui::FRAPPE)
-			}
-			AdhdMateriaTheme::CatppuccinMacchiato => {
-				catppuccin_egui::set_theme(ctx, catppuccin_egui::MACCHIATO)
-			}
-			AdhdMateriaTheme::CatppuccinMocha => {
-				catppuccin_egui::set_theme(ctx, catppuccin_egui::MOCHA)
-			}
+			AdhdMateriaTheme::CatppuccinLatte => catppuccin_egui::LATTE,
+			AdhdMateriaTheme::CatppuccinFrappe => catppuccin_egui::FRAPPE,
+			AdhdMateriaTheme::CatppuccinMacchiato => catppuccin_egui::MACCHIATO,
+			AdhdMateriaTheme::CatppuccinMocha => catppuccin_egui::MOCHA,
 		}
 	}
 

@@ -19,6 +19,7 @@ pub struct Tag {
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum TagValue {
+	Bool(bool),
 	Int(i64),
 	Float(f64),
 	Date(NaiveDate),
@@ -328,7 +329,38 @@ impl TagValue {
 
 				Ok(Self::Dictionary(result))
 			}
-			c if c.is_alphabetic() || c == '_' => Ok(Self::Tag(Box::new(Tag::parse(chars)?))),
+			'a'..='z' | '_' => {
+				chars.next().expect("peek returned some");
+
+				let text = chars
+					.clone()
+					.chars
+					.try_fold(String::from(first_char), |mut acc, c| match c {
+						'a'..='z' => {
+							acc.push(c);
+							Ok(acc)
+						}
+						_ => Err(acc),
+					});
+
+				let text = text.unwrap_or_else(|e| e);
+
+				let (result, boolean) = match text.as_str() {
+					"true" => (Ok(Self::Bool(true)), true),
+					"false" => (Ok(Self::Bool(false)), true),
+					_ => (Ok(Self::Tag(Box::new(Tag::parse(chars)?))), false),
+				};
+
+				if boolean {
+					for _ in 0..(text.len() - 1) {
+						chars
+							.next_with_whitespace()
+							.expect("text is at least this large");
+					}
+				}
+
+				result
+			}
 			other => Err(TagError::InvalidFirstValueChar(other)),
 		}
 	}
@@ -392,6 +424,7 @@ impl ToString for Tag {
 impl ToString for TagValue {
 	fn to_string(&self) -> String {
 		match self {
+			Self::Bool(b) => if *b { "true" } else { "false" }.to_string(),
 			Self::Text(text) => format!("\"{}\"", text),
 			Self::Int(int) => int.to_string(),
 			Self::Float(float) => float.to_string(),

@@ -84,12 +84,18 @@ impl TagWidget<'_> {
 					.fill(color.lerp_to_gamma(ui.style().visuals.window_fill(), 0.8))
 					.show(ui, |ui| {
 						ui.label(match other {
-							TagValue::Int(i) => i.to_string(),
-							TagValue::Float(f) => f.to_string(),
-							TagValue::Date(d) => d
-								.format_or_err(Settings::get().date_format.as_str())
-								.unwrap_or(d.format(DEFAULT_DATE_FORMAT).to_string()),
-							TagValue::Text(t) => t.clone(),
+							TagValue::Bool(b) => egui::RichText::new(b.to_string()).color(if *b {
+								Settings::get().theme.get_catppuccin().teal
+							} else {
+								Settings::get().theme.get_catppuccin().flamingo
+							}),
+							TagValue::Int(i) => egui::RichText::new(i.to_string()),
+							TagValue::Float(f) => egui::RichText::new(f.to_string()),
+							TagValue::Date(d) => egui::RichText::new(
+								d.format_or_err(Settings::get().date_format.as_str())
+									.unwrap_or(d.format(DEFAULT_DATE_FORMAT).to_string()),
+							),
+							TagValue::Text(t) => egui::RichText::new(t.clone()),
 							TagValue::List(_) | TagValue::Dictionary(_) | TagValue::Tag(_) => {
 								unreachable!("already handled")
 							}
