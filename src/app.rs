@@ -138,6 +138,14 @@ impl App for AdhdMateriaApp {
 				ui.label("tab.");
 			});
 			ui.separator();
+			ui.add_space(8.0);
+
+			let clear_done = ui.horizontal_wrapped(|ui| {
+				ui.button("Clear Done Tasks").clicked()
+			}).inner;
+
+			ui.add_space(8.0);
+			ui.separator();
 			ui.add_space(16.0);
 
 			ui.add_enabled_ui(self.interactable, |ui| {
@@ -175,6 +183,10 @@ impl App for AdhdMateriaApp {
 														OkCancelResult::Cancel => task.edit(),
 													}
 												}
+											}
+
+											if clear_done && task.is_done() {
+												task.mark_for_delete();
 											}
 										}
 									});

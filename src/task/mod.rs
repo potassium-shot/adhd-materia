@@ -3,7 +3,7 @@ use std::{path::Path, str::FromStr, time::Duration};
 use ui::TaskWidget;
 use uuid::Uuid;
 
-use crate::{data_dir::DataDirError, tag::Tag};
+use crate::{data_dir::DataDirError, settings::Settings, tag::Tag};
 
 pub mod list;
 pub mod scheduled;
@@ -178,6 +178,10 @@ impl<T: TaskTypeData> Task<T> {
 			state: self.state,
 			marked_for_delete: self.marked_for_delete,
 		}
+	}
+
+	pub fn is_done(&self) -> bool {
+		self.tags.contains(&Settings::get_done_tag())
 	}
 }
 
