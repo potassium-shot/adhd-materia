@@ -194,7 +194,10 @@ impl App for AdhdMateriaApp {
 								ui.add_space(16.0);
 
 								if ui.button("New Task").clicked() {
-									if let Err(e) = task_list.add_task(Settings::get().default_task.clone()) {
+									let mut new_task = Settings::get().default_task.clone();
+									new_task.edit();
+
+									if let Err(e) = task_list.add_task(new_task) {
 										crate::toasts()
 											.error(format!("Could not create task: {}", e))
 											.set_closable(true)

@@ -86,7 +86,10 @@ impl SidePanel {
 									ui.add_space(16.0);
 
 									if ui.button("New Task").clicked() {
-										if let Err(e) = task_list.new_task() {
+										let mut new_task = Settings::get().default_task.clone().convert(ScheduledTask::default());
+										new_task.edit();
+
+										if let Err(e) = task_list.add_task(new_task) {
 											crate::toasts()
 												.error(format!(
 													"Could not create scheduled task: {}",

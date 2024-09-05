@@ -48,10 +48,6 @@ impl<T: TaskTypeData> TaskList<T> {
 		self.tasks.values_mut()
 	}
 
-	pub fn new_task(&mut self) -> Result<(), TaskError> {
-		self.add_task(Task::<T>::default())
-	}
-
 	pub fn add_task(&mut self, task: Task<T>) -> Result<(), TaskError> {
 		task.save(self.path)?;
 		self.tasks.insert(task.uuid, task);
