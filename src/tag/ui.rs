@@ -11,6 +11,19 @@ use super::{Tag, TagValue};
 
 static COLORHASH: LazyLock<colorhash::ColorHash> = LazyLock::new(|| colorhash::ColorHash::new());
 
+fn get_tag_color(tag: &Tag) -> egui::Color32 {
+	if tag.name.as_str() == Settings::get_done_tag().name.as_str() {
+		egui::Color32::from_rgb(0x20, 0xF0, 0x20)
+	} else {
+		let col_hash = COLORHASH.rgb(&tag.name);
+		egui::Color32::from_rgb(
+			col_hash.red() as u8,
+			col_hash.green() as u8,
+			col_hash.blue() as u8,
+		)
+	}
+}
+
 pub struct TagWidget<'tag> {
 	tag: &'tag mut Tag,
 	edit_mode: bool,
@@ -45,12 +58,7 @@ impl egui::Widget for TagWidget<'_> {
 
 impl TagWidget<'_> {
 	fn draw_tag(ui: &mut egui::Ui, tag: &Tag) -> egui::Response {
-		let col_hash = COLORHASH.rgb(&tag.name);
-		let col = egui::Color32::from_rgb(
-			col_hash.red() as u8,
-			col_hash.green() as u8,
-			col_hash.blue() as u8,
-		);
+		let col = get_tag_color(tag);
 
 		egui::Frame::group(ui.style())
 			.stroke(egui::Stroke::new(
