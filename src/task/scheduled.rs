@@ -50,7 +50,7 @@ impl ScheduledTask {
 			}
 			RepeatMode::Daily => {
 				today
-					.signed_duration_since(NaiveDate::max(last_seen, self.date))
+					.signed_duration_since(NaiveDate::max(last_seen.succ_opt().unwrap(), self.date))
 					.num_days() as i32 + 1
 			}
 			RepeatMode::Weekly => {
