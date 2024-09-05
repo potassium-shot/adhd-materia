@@ -191,6 +191,14 @@ impl Tag {
 
 		Ok(())
 	}
+
+	pub fn nested_block_count(&self) -> i32 {
+		if let Some(value) = &self.value {
+			value.nested_block_count() + 1
+		} else {
+			1
+		}
+	}
 }
 
 impl FromStr for TagValue {
@@ -330,8 +338,6 @@ impl TagValue {
 				Ok(Self::Dictionary(result))
 			}
 			'a'..='z' | '_' => {
-				chars.next().expect("peek returned some");
-
 				let text = chars
 					.clone()
 					.chars
@@ -352,6 +358,8 @@ impl TagValue {
 				};
 
 				if boolean {
+					chars.next().expect("peek returned some");
+
 					for _ in 0..(text.len() - 1) {
 						chars
 							.next_with_whitespace()
@@ -404,6 +412,15 @@ impl TagValue {
 		}
 
 		Some(Ok(string))
+	}
+
+	pub fn nested_block_count(&self) -> i32 {
+		match self {
+			Self::Tag(t) => t.nested_block_count(),
+			Self::List(list) => list.iter().fold(0, |acc, el| { i32::max(acc, el.nested_block_count()) }),
+			Self::Dictionary(dict) => dict.values().fold(0, |acc, el| { i32::max(acc, el.nested_block_count()) }),
+			_ => 1,
+		}
 	}
 }
 

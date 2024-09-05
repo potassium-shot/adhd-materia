@@ -27,7 +27,18 @@ impl egui::Widget for TagWidget<'_> {
 		if self.edit_mode {
 			ui.add(egui::TextEdit::singleline(self.tag.get_editing_text()).code_editor())
 		} else {
-			Self::draw_tag(ui, &self.tag)
+			let (rect, resp) = ui.allocate_at_least(
+				egui::Vec2::new(1.0, (19 + 12 * self.tag.nested_block_count()) as f32),
+				egui::Sense::hover(),
+			);
+
+			ui.allocate_ui_at_rect(rect.with_max_x(ui.available_width()), |ui| {
+				ui.horizontal_centered(|ui| {
+					Self::draw_tag(ui, &self.tag);
+				});
+			});
+
+			resp
 		}
 	}
 }
