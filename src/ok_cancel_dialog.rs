@@ -36,18 +36,8 @@ impl OkCancelDialog {
 		self
 	}
 
-	pub fn with_cancel_text(mut self, cancel_text: &'static str) -> Self {
-		self.cancel_text = cancel_text;
-		self
-	}
-
 	pub fn with_ok_color(mut self, ok_color: egui::Color32) -> Self {
 		self.ok_color = ok_color;
-		self
-	}
-
-	pub fn with_cancel_color(mut self, cancel_color: egui::Color32) -> Self {
-		self.cancel_color = cancel_color;
 		self
 	}
 

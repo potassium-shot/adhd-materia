@@ -82,10 +82,6 @@ impl<T: TaskTypeData> Task<T> {
 		})
 	}
 
-	pub fn load(uuid: Uuid, path: TaskPath) -> Result<Self, TaskError> {
-		Self::load_from_name(uuid.to_string(), path)
-	}
-
 	pub fn save_to_path(&self, path: impl AsRef<Path>) -> Result<(), TaskError> {
 		Ok(std::fs::write(
 			path,

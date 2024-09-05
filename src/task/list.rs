@@ -44,10 +44,6 @@ impl<T: TaskTypeData> TaskList<T> {
 		Ok((Self { tasks, path }, errors))
 	}
 
-	pub fn tasks(&self) -> hash_map::Values<Uuid, Task<T>> {
-		self.tasks.values()
-	}
-
 	pub fn tasks_mut(&mut self) -> hash_map::ValuesMut<Uuid, Task<T>> {
 		self.tasks.values_mut()
 	}
@@ -103,10 +99,6 @@ impl<T: TaskTypeData> TaskList<T> {
 					.set_duration(Some(Duration::from_millis(10_000)));
 			}
 		}
-	}
-
-	pub fn get_tasks(&self) -> impl Iterator<Item = &Task<T>> {
-		self.tasks.values()
 	}
 
 	pub fn get_tasks_mut(&mut self) -> impl Iterator<Item = &mut Task<T>> {
