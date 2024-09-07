@@ -193,7 +193,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 									if ui
 										.button(
 											egui::RichText::from("💾")
-												.color(egui::Color32::from_rgb(0xAF, 0xAF, 0xFF)),
+												.color(Settings::get().theme.get_catppuccin().lavender),
 										)
 										.on_hover_ui(|ui| {
 											ui.label("Save task");

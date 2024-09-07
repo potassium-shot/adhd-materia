@@ -1,4 +1,4 @@
-use crate::toast_error;
+use crate::{settings::Settings, toast_error};
 
 use super::list::ScriptEditor;
 
@@ -13,36 +13,81 @@ impl<'script> ScriptWidget<'script> {
 
 		let response = ui
 			.group(|ui| {
-				ui.vertical(|ui| match &mut self.script.state {
-					super::list::ScriptEditorState::EditMode(edited_script) => {
-						ui.horizontal_top(|ui| {
-							ui.text_edit_singleline(&mut edited_script.name);
+				ui.vertical(|ui| {
+					let theme = egui_extras::syntax_highlighting::CodeTheme::from_style(ui.style());
 
-							if ui.button("S").clicked() {
-								switch_to_display = true;
-							}
-
-							if ui.button("D").clicked() {
-								mark_for_delete = true;
-							}
-						});
-
-						ui.text_edit_multiline(&mut edited_script.code);
-					}
-					super::list::ScriptEditorState::DisplayMode => {
-						ui.horizontal_top(|ui| {
-							ui.heading(&self.script.script.name);
-
-							if ui.button("E").clicked() {
-								self.script.edit();
-							}
-						});
-						ui.separator();
-						ui.add_space(8.0);
-						ui.add_enabled(
-							false,
-							egui::TextEdit::multiline(&mut self.script.script.code),
+					let mut layouter = |ui: &egui::Ui, string: &str, wrap_width: f32| {
+						let mut layout_job = egui_extras::syntax_highlighting::highlight(
+							ui.ctx(),
+							&theme,
+							string,
+							"py",
 						);
+						layout_job.wrap.max_width = wrap_width;
+						ui.fonts(|f| f.layout_job(layout_job))
+					};
+
+					match &mut self.script.state {
+						super::list::ScriptEditorState::EditMode(edited_script) => {
+							ui.horizontal_top(|ui| {
+								ui.text_edit_singleline(&mut edited_script.name);
+
+								if ui
+									.button(
+										egui::RichText::from("💾")
+											.color(Settings::get().theme.get_catppuccin().lavender),
+									)
+									.on_hover_ui(|ui| {
+										ui.label("Save task");
+									})
+									.clicked()
+								{
+									switch_to_display = true;
+								}
+
+								if ui
+									.button(
+										egui::RichText::from("🗑")
+											.color(ui.style().visuals.error_fg_color),
+									)
+									.clicked()
+								{
+									mark_for_delete = true;
+								}
+							});
+
+							ui.add(
+								egui::TextEdit::multiline(&mut edited_script.code)
+									.code_editor()
+									.layouter(&mut layouter),
+							);
+						}
+						super::list::ScriptEditorState::DisplayMode => {
+							ui.horizontal_top(|ui| {
+								ui.heading(&self.script.script.name);
+
+								if ui
+									.button(
+										egui::RichText::from("✏")
+											.color(ui.style().visuals.warn_fg_color),
+									)
+									.on_hover_ui(|ui| {
+										ui.label("Edit task");
+									})
+									.clicked()
+								{
+									self.script.edit();
+								}
+							});
+							ui.separator();
+							ui.add_space(8.0);
+							ui.add_enabled(
+								false,
+								egui::TextEdit::multiline(&mut self.script.script.code)
+									.code_editor()
+									.layouter(&mut layouter),
+							);
+						}
 					}
 				});
 			})
