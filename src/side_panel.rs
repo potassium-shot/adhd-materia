@@ -1,13 +1,16 @@
 use std::time::Duration;
 
 use crate::{
+	data_dir::DataDirError,
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
+	scripts::{filter::DEFAULT_FILTER_SCRIPT, list::ScriptList},
 	settings::{self, AdhdMateriaTheme, Settings, DEFAULT_SCHEDULED_TASK_TAG},
 	task::{
 		list::{TaskList, TaskListError},
 		scheduled::ScheduledTask,
 		TaskPath,
 	},
+	toast_error,
 };
 
 #[derive(Default, kinded::Kinded)]
@@ -17,6 +20,9 @@ pub enum SidePanel {
 	ScheduledTasks {
 		scheduled_task_list: Result<TaskList<ScheduledTask>, TaskListError>,
 		interactable: bool,
+	},
+	FilterScripts {
+		script_list: Result<ScriptList, &'static DataDirError>,
 	},
 	Scripts {},
 	Settings,
@@ -86,7 +92,11 @@ impl SidePanel {
 									ui.add_space(16.0);
 
 									if ui.button("New Task").clicked() {
-										let mut new_task = Settings::get().default_task.clone().convert(ScheduledTask::default());
+										let mut new_task = Settings::get()
+											.default_task
+											.clone()
+											.convert(ScheduledTask::default());
+										new_task.new_uuid();
 										new_task.edit();
 
 										if let Err(e) = task_list.add_task(new_task) {
@@ -124,6 +134,38 @@ impl SidePanel {
 						}
 					}
 				});
+			}
+			Self::FilterScripts { script_list } => {
+				ui.heading("Fitler Scripts");
+				ui.separator();
+				ui.add_space(16.0);
+
+				match script_list {
+					Ok(script_list) => {
+						egui::ScrollArea::vertical()
+							.auto_shrink(false)
+							.show(ui, |ui| {
+								ui.vertical_centered_justified(|ui| {
+									for script in script_list.scripts_mut() {
+										script.widget().show(ui);
+									}
+
+									script_list.cleanup();
+
+									if ui.button("New Filter Script").clicked() {
+										script_list.add(DEFAULT_FILTER_SCRIPT.clone());
+									}
+								});
+							});
+					}
+					Err(e) => {
+						ui.label(
+							egui::RichText::new(format!("Couldn't load filter scripts: {}", e))
+								.color(ui.style().visuals.error_fg_color)
+								.heading(),
+						);
+					}
+				}
 			}
 			Self::Scripts {} => {
 				ui.heading("Scripts");
@@ -313,6 +355,20 @@ impl SidePanel {
 					interactable: true,
 				}
 			}
+			SidePanelKind::FilterScripts => SidePanel::FilterScripts {
+				script_list: match crate::data_dir()
+					.and_then(|data_dir| Ok(ScriptList::new(data_dir.filter_scripts().to_owned())))
+				{
+					Ok((script_list, errors)) => {
+						errors.into_iter().for_each(|e| {
+							toast_error!("Couldn't load script: {}", e);
+						});
+
+						Ok(script_list)
+					}
+					Err(e) => Err(e),
+				},
+			},
 			SidePanelKind::Scripts => Self::Scripts {},
 			SidePanelKind::Settings => Self::Settings,
 			SidePanelKind::Hidden => Self::Hidden,
@@ -328,6 +384,13 @@ impl SidePanel {
 			} => {
 				if let Ok(list) = scheduled_task_list {
 					list.save_all();
+				}
+			}
+			SidePanel::FilterScripts { script_list } => {
+				if let Ok(list) = script_list {
+					list.save_all().into_iter().for_each(|e| {
+						toast_error!("Couldn't save filter script: {}", e);
+					});
 				}
 			}
 			SidePanel::Scripts {} => {}

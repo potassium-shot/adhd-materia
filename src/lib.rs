@@ -1,6 +1,7 @@
 mod app;
 mod data_dir;
 mod ok_cancel_dialog;
+mod scripts;
 mod session;
 mod settings;
 mod side_panel;

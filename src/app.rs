@@ -4,6 +4,7 @@ use eframe::{App, CreationContext};
 
 use crate::{
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
+	scripts::PocketPyLock,
 	settings::Settings,
 	side_panel::{SidePanel, SidePanelKind},
 	startup_script::StartupScript,
@@ -12,6 +13,12 @@ use crate::{
 		TaskPath,
 	},
 };
+
+static mut SCRIPT_LOCK: Option<crate::scripts::PocketPyLock> = None;
+
+pub fn script_lock() -> crate::scripts::PocketPyLockGuard<'static> {
+	unsafe { SCRIPT_LOCK.as_ref().unwrap() }.lock()
+}
 
 pub struct AdhdMateriaApp {
 	task_list: Result<TaskList, TaskListError>,
@@ -22,6 +29,10 @@ pub struct AdhdMateriaApp {
 
 impl AdhdMateriaApp {
 	pub fn new(cc: &CreationContext) -> Self {
+		unsafe {
+			SCRIPT_LOCK = Some(PocketPyLock::new());
+		}
+
 		// Enable catppuccin theme
 		Settings::get().theme.apply(&cc.egui_ctx);
 
@@ -115,6 +126,8 @@ impl App for AdhdMateriaApp {
 
 					side_panel_button(ui, SidePanelKind::ScheduledTasks, '🕗');
 					ui.separator();
+					side_panel_button(ui, SidePanelKind::FilterScripts, '🔻');
+					ui.separator();
 					side_panel_button(ui, SidePanelKind::Scripts, '📃');
 					ui.separator();
 					side_panel_button(ui, SidePanelKind::Settings, '⛭');
@@ -195,6 +208,7 @@ impl App for AdhdMateriaApp {
 
 								if ui.button("New Task").clicked() {
 									let mut new_task = Settings::get().default_task.clone();
+									new_task.new_uuid();
 									new_task.edit();
 
 									if let Err(e) = task_list.add_task(new_task) {
@@ -229,5 +243,13 @@ impl App for AdhdMateriaApp {
 		});
 
 		crate::toasts().show(ctx);
+	}
+}
+
+impl Drop for AdhdMateriaApp {
+	fn drop(&mut self) {
+		unsafe {
+			SCRIPT_LOCK = None;
+		}
 	}
 }

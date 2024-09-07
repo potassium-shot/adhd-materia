@@ -18,3 +18,13 @@ impl ChronoDelayFormatExt for NaiveDate {
 		Ok(())
 	}
 }
+
+#[macro_export]
+macro_rules! toast_error {
+	($fmt: expr, $e: expr) => {
+		crate::toasts()
+			.error(format!($fmt, $e))
+			.set_closable(true)
+			.set_duration(Some(std::time::Duration::from_millis(10_000)))
+	};
+}
