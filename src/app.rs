@@ -3,8 +3,9 @@ use std::time::Duration;
 use eframe::{App, CreationContext};
 
 use crate::{
+	data_dir::DataDirError,
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
-	scripts::PocketPyLock,
+	scripts::{filter::FilterList, PocketPyLock},
 	settings::Settings,
 	side_panel::{SidePanel, SidePanelKind},
 	startup_script::StartupScript,
@@ -25,6 +26,8 @@ pub struct AdhdMateriaApp {
 	side_panel: SidePanel,
 
 	interactable: bool,
+
+	filter_list: Result<FilterList, &'static DataDirError>,
 }
 
 impl AdhdMateriaApp {
@@ -88,12 +91,16 @@ impl AdhdMateriaApp {
 			side_panel: SidePanel::default(),
 
 			interactable: true,
+
+			filter_list: FilterList::new(),
 		}
 	}
 }
 
 impl App for AdhdMateriaApp {
 	fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+		let left_panel_was_shown = self.side_panel.is_shown();
+
 		egui::SidePanel::left("left_panel_buttons")
 			.exact_width(64.0)
 			.resizable(false)
@@ -141,6 +148,10 @@ impl App for AdhdMateriaApp {
 				self.side_panel.show(ui);
 			});
 
+		if left_panel_was_shown && !self.side_panel.is_shown() {
+			self.filter_list = FilterList::new();
+		}
+
 		egui::CentralPanel::default().show(ctx, |ui| {
 			ui.heading("Task List");
 			ui.horizontal_wrapped(|ui| {
@@ -156,6 +167,19 @@ impl App for AdhdMateriaApp {
 			let clear_done = ui.horizontal_wrapped(|ui| {
 				ui.button("Clear Done Tasks").clicked()
 			}).inner;
+
+			match self.filter_list {
+				Ok(ref mut filter_list) => {
+					ui.horizontal_wrapped(|ui| {
+						for (filter, enabled) in filter_list.0.iter_mut() {
+							ui.add(crate::scripts::filter::FilterBadge::new(filter.as_str(), enabled));
+						}
+					});
+				}
+				Err(e) => {
+					ui.label(format!("Couldn't load scripts: {}", e));
+				}
+			}
 
 			ui.add_space(8.0);
 			ui.separator();

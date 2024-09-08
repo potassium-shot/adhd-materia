@@ -136,7 +136,7 @@ impl SidePanel {
 				});
 			}
 			Self::FilterScripts { script_list } => {
-				ui.heading("Fitler Scripts");
+				ui.heading("Filter Scripts");
 				ui.separator();
 				ui.add_space(16.0);
 
@@ -153,7 +153,11 @@ impl SidePanel {
 									script_list.cleanup();
 
 									if ui.button("New Filter Script").clicked() {
-										script_list.add(DEFAULT_FILTER_SCRIPT.clone());
+										if let Err(e) =
+											script_list.add(DEFAULT_FILTER_SCRIPT.clone())
+										{
+											toast_error!("Couldn't create filter script: {}", e);
+										}
 									}
 								});
 							});

@@ -45,22 +45,16 @@ impl ScriptList {
 		(Self { scripts, path }, errors)
 	}
 
-	pub fn add(&mut self, script: PocketPyScript) {
+	pub fn add(&mut self, script: PocketPyScript) -> Result<(), PocketPyScriptError> {
+		script.save(self.path.as_path())?;
 		self.scripts.insert(
 			script.name.clone(),
 			ScriptEditor {
+				state: ScriptEditorState::EditMode(script.clone()),
 				script,
-				state: ScriptEditorState::DisplayMode,
 				marked_for_deletion: false,
 			},
 		);
-	}
-
-	pub fn remove(&mut self, name: &str) -> Result<(), PocketPyScriptError> {
-		if let Some(editor) = self.scripts.remove(name) {
-			editor.script.delete(&self.path)?;
-		}
-
 		Ok(())
 	}
 
