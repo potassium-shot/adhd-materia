@@ -1,7 +1,4 @@
-use std::{
-	collections::{hash_map, HashMap},
-	time::Duration,
-};
+use std::{collections::HashMap, time::Duration};
 
 use uuid::Uuid;
 
@@ -44,8 +41,16 @@ impl<T: TaskTypeData> TaskList<T> {
 		Ok((Self { tasks, path }, errors))
 	}
 
-	pub fn tasks_mut(&mut self) -> hash_map::ValuesMut<Uuid, Task<T>> {
+	pub fn tasks(&self) -> impl Iterator<Item = &Task<T>> {
+		self.tasks.values()
+	}
+
+	pub fn tasks_mut(&mut self) -> impl Iterator<Item = &mut Task<T>> {
 		self.tasks.values_mut()
+	}
+
+	pub fn get_mut(&mut self, id: &Uuid) -> Option<&mut Task<T>> {
+		self.tasks.get_mut(id)
 	}
 
 	pub fn add_task(&mut self, task: Task<T>) -> Result<(), TaskError> {
@@ -62,7 +67,7 @@ impl<T: TaskTypeData> TaskList<T> {
 		Ok(())
 	}
 
-	pub fn cleanup_marked_for_delete(&mut self) -> Vec<TaskError> {
+	pub fn cleanup_marked_for_delete(&mut self) -> (bool, Vec<TaskError>) {
 		let to_delete: Vec<Uuid> = self
 			.tasks
 			.iter()
@@ -75,6 +80,8 @@ impl<T: TaskTypeData> TaskList<T> {
 			})
 			.collect();
 
+		let anything = !to_delete.is_empty();
+
 		let mut error_list = Vec::new();
 
 		for uuid in to_delete {
@@ -83,7 +90,7 @@ impl<T: TaskTypeData> TaskList<T> {
 			}
 		}
 
-		error_list
+		(anything, error_list)
 	}
 
 	pub fn save_all(&self) {
@@ -95,10 +102,6 @@ impl<T: TaskTypeData> TaskList<T> {
 					.set_duration(Some(Duration::from_millis(10_000)));
 			}
 		}
-	}
-
-	pub fn get_tasks_mut(&mut self) -> impl Iterator<Item = &mut Task<T>> {
-		self.tasks.values_mut()
 	}
 }
 

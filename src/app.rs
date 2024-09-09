@@ -10,6 +10,7 @@ use crate::{
 	side_panel::{SidePanel, SidePanelKind},
 	startup_script::StartupScript,
 	task::{
+		display_list::TaskDisplayList,
 		list::{TaskList, TaskListError},
 		TaskPath,
 	},
@@ -23,6 +24,7 @@ pub fn script_lock() -> crate::scripts::PocketPyLockGuard<'static> {
 
 pub struct AdhdMateriaApp {
 	task_list: Result<TaskList, TaskListError>,
+	task_display_list: Option<TaskDisplayList>,
 	side_panel: SidePanel,
 
 	interactable: bool,
@@ -86,13 +88,21 @@ impl AdhdMateriaApp {
 			});
 		}
 
+		let filter_list = FilterList::new();
+
 		Self {
+			task_display_list: task_list
+				.as_ref()
+				.map(|(list, _)| list)
+				.ok()
+				.and_then(|task_list| Some((task_list, filter_list.as_ref().ok()?)))
+				.map(|(task_list, filter_list)| TaskDisplayList::new(task_list, filter_list)),
 			task_list: task_list.map(|(list, _)| list),
 			side_panel: SidePanel::default(),
 
 			interactable: true,
 
-			filter_list: FilterList::new(),
+			filter_list,
 		}
 	}
 }
@@ -152,6 +162,11 @@ impl App for AdhdMateriaApp {
 			self.filter_list = FilterList::new();
 		}
 
+		let mut update_required = self
+			.filter_list
+			.as_mut()
+			.is_ok_and(|filter_list| filter_list.check_changed());
+
 		egui::CentralPanel::default().show(ctx, |ui| {
 			ui.heading("Task List");
 			ui.horizontal_wrapped(|ui| {
@@ -171,8 +186,10 @@ impl App for AdhdMateriaApp {
 			match self.filter_list {
 				Ok(ref mut filter_list) => {
 					ui.horizontal_wrapped(|ui| {
-						for (filter, enabled) in filter_list.0.iter_mut() {
-							ui.add(crate::scripts::filter::FilterBadge::new(filter.as_str(), enabled));
+						for (filter, mut enabled_ref) in filter_list.iter_mut() {
+							let mut enabled = enabled_ref.get();
+							ui.add(crate::scripts::filter::FilterBadge::new(filter, &mut enabled));
+							enabled_ref.set(enabled);
 						}
 					});
 				}
@@ -201,8 +218,9 @@ impl App for AdhdMateriaApp {
 									.spacing((40.0, 12.0))
 									.striped(true)
 									.show(ui, |ui| {
-										for task in task_list.tasks_mut() {
-											ui.add(task.widget());
+										for task in self.task_display_list.as_ref().expect("display list should be Some when task list is ok").tasks() {
+											let task = task_list.get_mut(task).expect("task display list should only have valid uuids");
+											update_required |= task.widget().show(ui);
 											ui.end_row();
 
 											if task.is_pending_delete() {
@@ -241,11 +259,17 @@ impl App for AdhdMateriaApp {
 											.set_closable(true)
 											.set_duration(Some(Duration::from_millis(10_000)));
 									}
+
+									update_required = true;
 								}
 							});
 						});
 
-						for e in task_list.cleanup_marked_for_delete() {
+						let (anything_deleted, cleanup_errors) = task_list.cleanup_marked_for_delete();
+
+						update_required |= anything_deleted;
+
+						for e in cleanup_errors {
 							crate::toasts()
 								.error(format!("Could not delete task: {}", e))
 								.set_closable(true)
@@ -265,6 +289,15 @@ impl App for AdhdMateriaApp {
 				}
 			});
 		});
+
+		if update_required && self.task_display_list.take().is_some() {
+			self.task_display_list = Some(TaskDisplayList::new(
+				self.task_list.as_ref().expect("task display list is some"),
+				self.filter_list
+					.as_ref()
+					.expect("task display list is some"),
+			));
+		}
 
 		crate::toasts().show(ctx);
 	}

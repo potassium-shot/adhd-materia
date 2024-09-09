@@ -58,7 +58,7 @@ impl SidePanel {
 										.striped(true)
 										.show(ui, |ui| {
 											for task in task_list.tasks_mut() {
-												ui.add(task.widget());
+												task.widget().show(ui);
 												ui.end_row();
 
 												if task.is_pending_delete() {
@@ -112,7 +112,7 @@ impl SidePanel {
 								},
 							);
 
-							for e in task_list.cleanup_marked_for_delete() {
+							for e in task_list.cleanup_marked_for_delete().1 {
 								crate::toasts()
 									.error(format!("Could not delete scheduled task: {}", e))
 									.set_closable(true)
@@ -238,7 +238,7 @@ impl SidePanel {
 						settings.default_task.edit_no_buttons();
 
 						ui.label("Default task");
-						ui.add(settings.default_task.widget());
+						settings.default_task.widget().show(ui);
 						ui.end_row();
 
 						ui.label("Repeating task rewind");

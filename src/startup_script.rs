@@ -19,7 +19,7 @@ impl StartupScript {
 			TaskList::<ScheduledTask>::new(TaskPath::Scheduled)?;
 		let (mut task_list, _) = TaskList::<NormalTaskData>::new(TaskPath::Tasks)?;
 
-		for task in scheduled_task_list.get_tasks_mut() {
+		for task in scheduled_task_list.tasks_mut() {
 			let spawn_count = match Settings::get().repeatable_rewind {
 				crate::settings::RepeatableRewind::One => i32::min(task.type_data.spawn_count(), 1),
 				crate::settings::RepeatableRewind::All => task.type_data.spawn_count(),

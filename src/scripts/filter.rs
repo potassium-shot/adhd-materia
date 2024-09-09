@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::{cell::Cell, collections::HashMap, sync::LazyLock};
 
 use crate::data_dir::DataDirError;
 
@@ -52,16 +52,63 @@ impl egui::Widget for FilterBadge<'_, '_> {
 	}
 }
 
-pub struct FilterList(pub HashMap<String, bool>);
+pub struct FilterList {
+	list: HashMap<String, Cell<bool>>,
+	changed: Cell<bool>,
+}
 
 impl FilterList {
 	pub fn new() -> Result<Self, &'static DataDirError> {
-		Ok(Self(
-			ScriptList::new(crate::data_dir()?.filter_scripts().to_owned())
+		Ok(Self {
+			list: ScriptList::new(crate::data_dir()?.filter_scripts().to_owned())
 				.0
 				.scripts_mut()
-				.map(|script| (script.script.name.clone(), false))
+				.map(|script| (script.script.name.clone(), Cell::new(false)))
 				.collect(),
-		))
+			changed: Cell::new(true),
+		})
+	}
+
+	pub fn iter(&self) -> impl Iterator<Item = (&str, bool)> {
+		self.list.iter().map(|(k, v)| (k.as_str(), v.get()))
+	}
+
+	pub fn iter_mut(&mut self) -> impl Iterator<Item = (&str, FilterListEnabledRef)> {
+		self.list.iter().map(|(k, v)| {
+			(
+				k.as_str(),
+				FilterListEnabledRef {
+					enabled: v,
+					changed_ref: &self.changed,
+				},
+			)
+		})
+	}
+
+	pub fn check_changed(&mut self) -> bool {
+		if self.changed.get() {
+			self.changed.set(false);
+			true
+		} else {
+			false
+		}
+	}
+}
+
+pub struct FilterListEnabledRef<'list> {
+	enabled: &'list Cell<bool>,
+	changed_ref: &'list Cell<bool>,
+}
+
+impl FilterListEnabledRef<'_> {
+	pub fn get(&self) -> bool {
+		self.enabled.get()
+	}
+
+	pub fn set(&mut self, value: bool) {
+		if value != self.enabled.get() {
+			self.enabled.set(value);
+			self.changed_ref.set(true);
+		}
 	}
 }

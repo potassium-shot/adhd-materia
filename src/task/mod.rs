@@ -5,11 +5,12 @@ use uuid::Uuid;
 
 use crate::{data_dir::DataDirError, settings::Settings, tag::Tag};
 
+pub mod display_list;
 pub mod list;
 pub mod scheduled;
 mod ui;
 
-#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct Task<T = NormalTaskData> {
 	#[serde(skip)]
@@ -25,6 +26,17 @@ pub struct Task<T = NormalTaskData> {
 	state: TaskState,
 	#[serde(skip)]
 	marked_for_delete: bool,
+}
+
+impl<T: TaskTypeData> PartialEq for Task<T> {
+	fn eq(&self, other: &Self) -> bool {
+		self.uuid == other.uuid
+			&& self.state == other.state
+			&& self.name == other.name
+			&& self.description == other.description
+			&& self.type_data == other.type_data
+			&& self.tags == other.tags
+	}
 }
 
 impl<T: TaskTypeData> Default for Task<T> {

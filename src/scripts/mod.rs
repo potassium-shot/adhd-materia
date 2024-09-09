@@ -13,7 +13,7 @@ use crate::data_dir::DataDirError;
 pub mod filter;
 pub mod list;
 pub mod ui;
-mod value;
+pub mod value;
 
 static POCKETPY_LOCK: Mutex<Mutex<()>> = Mutex::new(Mutex::new(()));
 
@@ -77,7 +77,10 @@ impl PocketPyScript {
 
 	pub fn save(&self, path: impl AsRef<std::path::Path>) -> Result<(), PocketPyScriptError> {
 		let path = path.as_ref();
-		std::fs::write(path.join(self.name.as_str()).with_extension("py"), &self.code)?;
+		std::fs::write(
+			path.join(self.name.as_str()).with_extension("py"),
+			&self.code,
+		)?;
 		Ok(())
 	}
 
@@ -126,7 +129,6 @@ impl PocketPyScript {
 			}
 
 			let func_ref = py_getglobal(py_name(func_name_c.as_ptr()));
-
 			let argc = args.len();
 
 			for call_i in 0..call_count {
@@ -138,9 +140,6 @@ impl PocketPyScript {
 				}
 
 				if !py_vectorcall(argc as u16, 0) {
-					py_pop(); // Clear pushnil
-					py_pop(); // Clear function
-
 					return Err(PocketPyScriptError::PocketPyError(
 						CStr::from_ptr(py_formatexc()).to_string_lossy().to_string(),
 					));
@@ -148,9 +147,6 @@ impl PocketPyScript {
 
 				ret_vals.push(ReturnType::from_pocketpy_value_ptr(py_retval())?);
 			}
-
-			py_pop(); // Clear pushnil
-			py_pop(); // Clear function
 
 			Ok(ret_vals)
 		}

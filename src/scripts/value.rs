@@ -64,3 +64,26 @@ impl IntoPocketPyValue for f64 {
 		}
 	}
 }
+
+impl IntoPocketPyValue for bool {
+	fn push_pocketpy_value(&self) {
+		unsafe {
+			let r0 = py_getreg(0);
+			py_newbool(r0, *self);
+			py_push(r0);
+		}
+	}
+
+	fn from_pocketpy_value_ptr(value: *mut py_TValue) -> Result<Self, PocketPyScriptError>
+	where
+		Self: Sized,
+	{
+		unsafe {
+			if py_istype(value, py_totype(py_getbuiltin(py_name(c"bool".as_ptr())))) {
+				Ok(py_tobool(value))
+			} else {
+				Err(PocketPyScriptError::WrongType)
+			}
+		}
+	}
+}
