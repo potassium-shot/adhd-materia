@@ -10,13 +10,16 @@ use value::{AnyIntoPocketPyValue, IntoPocketPyValue};
 
 use crate::data_dir::DataDirError;
 
+pub mod badge;
 pub mod filter;
 pub mod list;
+pub mod sorting;
 pub mod ui;
 pub mod value;
 
 static POCKETPY_LOCK: Mutex<Mutex<()>> = Mutex::new(Mutex::new(()));
 
+#[allow(unused_macros)]
 macro_rules! pyprintln {
 	($fmt: expr, $($arg: expr),*) => {
 		unsafe {

@@ -3,7 +3,13 @@ use std::time::Duration;
 use crate::{
 	data_dir::DataDirError,
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
-	scripts::{filter::DEFAULT_FILTER_SCRIPT, list::ScriptList},
+	scripts::{
+		badge::BadgeType,
+		filter::{FilterBadgeType, DEFAULT_FILTER_SCRIPT},
+		list::ScriptList,
+		sorting::{SortingBadgeType, DEFAULT_SORTING_SCRIPT},
+		PocketPyScript,
+	},
 	settings::{self, AdhdMateriaTheme, Settings, DEFAULT_SCHEDULED_TASK_TAG},
 	task::{
 		list::{TaskList, TaskListError},
@@ -12,6 +18,23 @@ use crate::{
 	},
 	toast_error,
 };
+
+macro_rules! open_scripts {
+	($badge_type: ty, $side_panel_type: ident) => {
+		SidePanel::$side_panel_type {
+			script_list: match ScriptList::new() {
+				Ok((script_list, errors)) => {
+					errors.into_iter().for_each(|e| {
+						toast_error!("Couldn't load script: {}", e);
+					});
+
+					Ok(script_list)
+				}
+				Err(e) => Err(e),
+			},
+		}
+	};
+}
 
 #[derive(Default, kinded::Kinded)]
 pub enum SidePanel {
@@ -22,7 +45,10 @@ pub enum SidePanel {
 		interactable: bool,
 	},
 	FilterScripts {
-		script_list: Result<ScriptList, &'static DataDirError>,
+		script_list: Result<ScriptList<FilterBadgeType>, &'static DataDirError>,
+	},
+	SortingScripts {
+		script_list: Result<ScriptList<SortingBadgeType>, &'static DataDirError>,
 	},
 	Scripts {},
 	Settings,
@@ -136,40 +162,10 @@ impl SidePanel {
 				});
 			}
 			Self::FilterScripts { script_list } => {
-				ui.heading("Filter Scripts");
-				ui.separator();
-				ui.add_space(16.0);
-
-				match script_list {
-					Ok(script_list) => {
-						egui::ScrollArea::vertical()
-							.auto_shrink(false)
-							.show(ui, |ui| {
-								ui.vertical_centered_justified(|ui| {
-									for script in script_list.scripts_mut() {
-										script.widget().show(ui);
-									}
-
-									script_list.cleanup();
-
-									if ui.button("New Filter Script").clicked() {
-										if let Err(e) =
-											script_list.add(DEFAULT_FILTER_SCRIPT.clone())
-										{
-											toast_error!("Couldn't create filter script: {}", e);
-										}
-									}
-								});
-							});
-					}
-					Err(e) => {
-						ui.label(
-							egui::RichText::new(format!("Couldn't load filter scripts: {}", e))
-								.color(ui.style().visuals.error_fg_color)
-								.heading(),
-						);
-					}
-				}
+				show_scripts(ui, script_list, "Filter", &DEFAULT_FILTER_SCRIPT);
+			}
+			Self::SortingScripts { script_list } => {
+				show_scripts(ui, script_list, "Sorting", &DEFAULT_SORTING_SCRIPT);
 			}
 			Self::Scripts {} => {
 				ui.heading("Scripts");
@@ -359,20 +355,8 @@ impl SidePanel {
 					interactable: true,
 				}
 			}
-			SidePanelKind::FilterScripts => SidePanel::FilterScripts {
-				script_list: match crate::data_dir()
-					.and_then(|data_dir| Ok(ScriptList::new(data_dir.filter_scripts().to_owned())))
-				{
-					Ok((script_list, errors)) => {
-						errors.into_iter().for_each(|e| {
-							toast_error!("Couldn't load script: {}", e);
-						});
-
-						Ok(script_list)
-					}
-					Err(e) => Err(e),
-				},
-			},
+			SidePanelKind::FilterScripts => open_scripts!(FilterBadgeType, FilterScripts),
+			SidePanelKind::SortingScripts => open_scripts!(SortingBadgeType, SortingScripts),
 			SidePanelKind::Scripts => Self::Scripts {},
 			SidePanelKind::Settings => Self::Settings,
 			SidePanelKind::Hidden => Self::Hidden,
@@ -391,11 +375,10 @@ impl SidePanel {
 				}
 			}
 			SidePanel::FilterScripts { script_list } => {
-				if let Ok(list) = script_list {
-					list.save_all().into_iter().for_each(|e| {
-						toast_error!("Couldn't save filter script: {}", e);
-					});
-				}
+				close_scripts(script_list, "Filter");
+			}
+			SidePanel::SortingScripts { script_list } => {
+				close_scripts(script_list, "Sorting");
 			}
 			SidePanel::Scripts {} => {}
 			SidePanel::Settings => {
@@ -427,5 +410,53 @@ impl SidePanel {
 impl Drop for SidePanel {
 	fn drop(&mut self) {
 		self.close();
+	}
+}
+
+fn show_scripts<T: BadgeType>(
+	ui: &mut egui::Ui,
+	script_list: &mut Result<ScriptList<T>, &DataDirError>,
+	script_name: &'static str,
+	default_script: &std::sync::LazyLock<PocketPyScript>,
+) {
+	ui.heading(format!("{} Scripts", script_name));
+	ui.separator();
+	ui.add_space(16.0);
+
+	match script_list {
+		Ok(script_list) => {
+			egui::ScrollArea::vertical()
+				.auto_shrink(false)
+				.show(ui, |ui| {
+					ui.vertical_centered_justified(|ui| {
+						for script in script_list.scripts_mut() {
+							script.widget().show(ui);
+						}
+
+						script_list.cleanup();
+
+						if ui.button(format!("New {} Script", script_name)).clicked() {
+							if let Err(e) = script_list.add((*default_script).clone()) {
+								toast_error!("Couldn't create {} script: {}", script_name, e);
+							}
+						}
+					});
+				});
+		}
+		Err(e) => {
+			ui.label(
+				egui::RichText::new(format!("Couldn't load {} scripts: {}", script_name, e))
+					.color(ui.style().visuals.error_fg_color)
+					.heading(),
+			);
+		}
+	}
+}
+
+fn close_scripts<T: BadgeType>(script_list: &mut Result<ScriptList<T>, &DataDirError>, script_name: &'static str) {
+	if let Ok(list) = script_list {
+		list.save_all().into_iter().for_each(|e| {
+			toast_error!("Couldn't save {} script: {}", script_name, e);
+		});
 	}
 }

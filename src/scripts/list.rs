@@ -1,14 +1,17 @@
 use std::{collections::HashMap, time::Duration};
 
-use super::{ui::ScriptWidget, PocketPyScript, PocketPyScriptError};
+use crate::data_dir::DataDirError;
 
-pub struct ScriptList {
-	scripts: HashMap<String, ScriptEditor>,
+use super::{badge::BadgeType, ui::ScriptWidget, PocketPyScript, PocketPyScriptError};
+
+pub struct ScriptList<T> {
+	scripts: HashMap<String, ScriptEditor<T>>,
 	path: std::path::PathBuf,
 }
 
-impl ScriptList {
-	pub fn new(path: std::path::PathBuf) -> (Self, Vec<PocketPyScriptError>) {
+impl<T: BadgeType> ScriptList<T> {
+	pub fn new() -> Result<(Self, Vec<PocketPyScriptError>), &'static DataDirError> {
+		let path = T::get_path()?.to_owned();
 		let mut scripts = HashMap::new();
 		let mut errors = Vec::new();
 
@@ -26,6 +29,7 @@ impl ScriptList {
 												script: script,
 												state: ScriptEditorState::DisplayMode,
 												marked_for_deletion: false,
+												_t: std::marker::PhantomData,
 											},
 										);
 									}
@@ -42,7 +46,7 @@ impl ScriptList {
 			Err(e) => errors.push(e.into()),
 		}
 
-		(Self { scripts, path }, errors)
+		Ok((Self { scripts, path }, errors))
 	}
 
 	pub fn add(&mut self, script: PocketPyScript) -> Result<(), PocketPyScriptError> {
@@ -53,6 +57,7 @@ impl ScriptList {
 				state: ScriptEditorState::EditMode(script.clone()),
 				script,
 				marked_for_deletion: false,
+				_t: std::marker::PhantomData,
 			},
 		);
 		Ok(())
@@ -104,7 +109,7 @@ impl ScriptList {
 		}
 	}
 
-	pub fn scripts_mut(&mut self) -> impl Iterator<Item = &mut ScriptEditor> {
+	pub fn scripts_mut(&mut self) -> impl Iterator<Item = &mut ScriptEditor<T>> {
 		self.scripts.values_mut()
 	}
 }
@@ -112,10 +117,11 @@ impl ScriptList {
 #[derive(Debug, thiserror::Error)]
 pub enum ScriptListError {}
 
-pub struct ScriptEditor {
+pub struct ScriptEditor<T> {
 	pub script: PocketPyScript,
 	pub state: ScriptEditorState,
 	marked_for_deletion: bool,
+	_t: std::marker::PhantomData<T>,
 }
 
 pub enum ScriptEditorState {
@@ -133,13 +139,13 @@ impl ScriptEditorState {
 	}
 }
 
-impl ScriptEditor {
+impl<T: BadgeType> ScriptEditor<T> {
 	pub fn edit(&mut self) {
 		self.state = ScriptEditorState::EditMode(self.script.clone());
 	}
 
 	pub fn display(&mut self) -> Result<(), PocketPyScriptError> {
-		let path = crate::data_dir()?.filter_scripts();
+		let path = T::get_path()?;
 
 		if let Some(script) = self.state.take_edit() {
 			if script.name != self.script.name {
@@ -158,7 +164,7 @@ impl ScriptEditor {
 		self.marked_for_deletion = true;
 	}
 
-	pub fn widget(&mut self) -> ScriptWidget {
+	pub fn widget(&mut self) -> ScriptWidget<T> {
 		ScriptWidget { script: self }
 	}
 }

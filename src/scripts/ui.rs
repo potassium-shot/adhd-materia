@@ -1,12 +1,12 @@
 use crate::{settings::Settings, toast_error};
 
-use super::list::ScriptEditor;
+use super::{badge::BadgeType, list::ScriptEditor};
 
-pub struct ScriptWidget<'script> {
-	pub(super) script: &'script mut ScriptEditor,
+pub struct ScriptWidget<'script, T> {
+	pub(super) script: &'script mut ScriptEditor<T>,
 }
 
-impl<'script> ScriptWidget<'script> {
+impl<'script, T: BadgeType> ScriptWidget<'script, T> {
 	pub fn show(self, ui: &mut egui::Ui) -> egui::Response {
 		let mut switch_to_display = false;
 		let mut mark_for_delete = false;
@@ -38,7 +38,7 @@ impl<'script> ScriptWidget<'script> {
 											.color(Settings::get().theme.get_catppuccin().lavender),
 									)
 									.on_hover_ui(|ui| {
-										ui.label("Save task");
+										ui.label("Save script");
 									})
 									.clicked()
 								{
@@ -92,13 +92,14 @@ impl<'script> ScriptWidget<'script> {
 								egui::Layout::left_to_right(egui::Align::LEFT)
 									.with_main_justify(true),
 								|ui| {
-								ui.add_enabled(
-									false,
-									egui::TextEdit::multiline(&mut self.script.script.code)
-										.code_editor()
-										.layouter(&mut layouter),
-								);
-							});
+									ui.add_enabled(
+										false,
+										egui::TextEdit::multiline(&mut self.script.script.code)
+											.code_editor()
+											.layouter(&mut layouter),
+									);
+								},
+							);
 						}
 					}
 				});

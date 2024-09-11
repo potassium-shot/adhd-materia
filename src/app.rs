@@ -5,7 +5,12 @@ use eframe::{App, CreationContext};
 use crate::{
 	data_dir::DataDirError,
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
-	scripts::{filter::FilterList, PocketPyLock},
+	scripts::{
+		badge::{BadgeList, BadgeType},
+		filter::FilterList,
+		sorting::SortingList,
+		PocketPyLock,
+	},
 	settings::Settings,
 	side_panel::{SidePanel, SidePanelKind},
 	startup_script::StartupScript,
@@ -30,6 +35,7 @@ pub struct AdhdMateriaApp {
 	interactable: bool,
 
 	filter_list: Result<FilterList, &'static DataDirError>,
+	sorting_list: Result<SortingList, &'static DataDirError>,
 }
 
 impl AdhdMateriaApp {
@@ -89,6 +95,7 @@ impl AdhdMateriaApp {
 		}
 
 		let filter_list = FilterList::new();
+		let sorting_list = SortingList::new();
 
 		Self {
 			task_display_list: task_list
@@ -96,13 +103,19 @@ impl AdhdMateriaApp {
 				.map(|(list, _)| list)
 				.ok()
 				.and_then(|task_list| Some((task_list, filter_list.as_ref().ok()?)))
-				.map(|(task_list, filter_list)| TaskDisplayList::new(task_list, filter_list)),
+				.and_then(|(task_list, filter_list)| {
+					Some((task_list, filter_list, sorting_list.as_ref().ok()?))
+				})
+				.map(|(task_list, filter_list, sorting_list)| {
+					TaskDisplayList::new(task_list, filter_list, sorting_list)
+				}),
 			task_list: task_list.map(|(list, _)| list),
 			side_panel: SidePanel::default(),
 
 			interactable: true,
 
 			filter_list,
+			sorting_list,
 		}
 	}
 }
@@ -145,6 +158,8 @@ impl App for AdhdMateriaApp {
 					ui.separator();
 					side_panel_button(ui, SidePanelKind::FilterScripts, '🔻');
 					ui.separator();
+					side_panel_button(ui, SidePanelKind::SortingScripts, '🔤');
+					ui.separator();
 					side_panel_button(ui, SidePanelKind::Scripts, '📃');
 					ui.separator();
 					side_panel_button(ui, SidePanelKind::Settings, '⛭');
@@ -160,12 +175,17 @@ impl App for AdhdMateriaApp {
 
 		if left_panel_was_shown && !self.side_panel.is_shown() {
 			self.filter_list = FilterList::new();
+			self.sorting_list = SortingList::new();
 		}
 
 		let mut update_required = self
 			.filter_list
 			.as_mut()
-			.is_ok_and(|filter_list| filter_list.check_changed());
+			.is_ok_and(|filter_list| filter_list.check_changed())
+			|| self
+				.sorting_list
+				.as_mut()
+				.is_ok_and(|sorting_list| sorting_list.check_changed());
 
 		egui::CentralPanel::default().show(ctx, |ui| {
 			ui.heading("Task List");
@@ -183,20 +203,10 @@ impl App for AdhdMateriaApp {
 				ui.button("Clear Done Tasks").clicked()
 			}).inner;
 
-			match self.filter_list {
-				Ok(ref mut filter_list) => {
-					ui.horizontal_wrapped(|ui| {
-						for (filter, mut enabled_ref) in filter_list.iter_mut() {
-							let mut enabled = enabled_ref.get();
-							ui.add(crate::scripts::filter::FilterBadge::new(filter, &mut enabled));
-							enabled_ref.set(enabled);
-						}
-					});
-				}
-				Err(e) => {
-					ui.label(format!("Couldn't load scripts: {}", e));
-				}
-			}
+			ui.add_space(8.0);
+
+			show_badge_list(ui, &mut self.filter_list, "Filter");
+			show_badge_list(ui, &mut self.sorting_list, "Sorting");
 
 			ui.add_space(8.0);
 			ui.separator();
@@ -296,6 +306,7 @@ impl App for AdhdMateriaApp {
 				self.filter_list
 					.as_ref()
 					.expect("task display list is some"),
+				self.sorting_list.as_ref().expect("task display is some"),
 			));
 		}
 
@@ -307,6 +318,29 @@ impl Drop for AdhdMateriaApp {
 	fn drop(&mut self) {
 		unsafe {
 			SCRIPT_LOCK = None;
+		}
+	}
+}
+
+fn show_badge_list<T: BadgeType>(
+	ui: &mut egui::Ui,
+	badge_list: &mut Result<BadgeList<T>, &'static DataDirError>,
+	script_name: &'static str,
+) {
+	match badge_list {
+		Ok(ref mut badge_list) => {
+			ui.horizontal_wrapped(|ui| {
+				ui.label(egui::RichText::new(format!("{}: ", script_name)).size(16.0));
+
+				for (badge, mut enabled_ref) in badge_list.iter_mut() {
+					let mut enabled = enabled_ref.get();
+					ui.add(crate::scripts::badge::Badge::new(badge, &mut enabled));
+					enabled_ref.set(enabled);
+				}
+			});
+		}
+		Err(e) => {
+			ui.label(format!("Couldn't load {} scripts: {}", script_name, e));
 		}
 	}
 }
