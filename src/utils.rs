@@ -20,11 +20,44 @@ impl ChronoDelayFormatExt for NaiveDate {
 }
 
 #[macro_export]
+macro_rules! toast {
+	($type: ident, $time: expr, $fmt: expr, $($e: expr),*) => {
+		crate::toasts()
+			.$type(format!($fmt, $($e),*))
+			.set_closable(true)
+			.set_duration(Some(std::time::Duration::from_millis($time)))
+	};
+	($type: ident, $fmt: expr) => {
+		crate::toast!($type, $fmt,)
+	}
+}
+
+#[macro_export]
 macro_rules! toast_error {
 	($fmt: expr, $($e: expr),*) => {
-		crate::toasts()
-			.error(format!($fmt, $($e),*))
-			.set_closable(true)
-			.set_duration(Some(std::time::Duration::from_millis(10_000)))
+		crate::toast!(error, 10_000, $fmt, $($e),*)
 	};
+	($fmt: expr) => {
+		crate::toast_error!($fmt,)
+	}
+}
+
+#[macro_export]
+macro_rules! toast_info {
+	($fmt: expr, $($e: expr),*) => {
+		crate::toast!(info, 3000, $fmt, $($e),*)
+	};
+	($fmt: expr) => {
+		crate::toast_info!($fmt,)
+	}
+}
+
+#[macro_export]
+macro_rules! toast_success {
+	($fmt: expr, $($e: expr),*) => {
+		crate::toast!(success, 3000, $fmt, $($e),*)
+	};
+	($fmt: expr) => {
+		crate::toast_success!($fmt,)
+	}
 }

@@ -19,6 +19,7 @@ use crate::{
 		list::{TaskList, TaskListError},
 		TaskPath,
 	},
+	toast_info, toast_success,
 };
 
 static mut SCRIPT_LOCK: Option<crate::scripts::PocketPyLock> = None;
@@ -203,6 +204,8 @@ impl App for AdhdMateriaApp {
 				ui.button("Clear Done Tasks").clicked()
 			}).inner;
 
+			let mut done_cleared = 0;
+
 			ui.add_space(8.0);
 
 			show_badge_list(ui, &mut self.filter_list, "Filter");
@@ -252,6 +255,7 @@ impl App for AdhdMateriaApp {
 
 											if clear_done && task.is_done() {
 												task.mark_for_delete();
+												done_cleared += 1;
 											}
 										}
 									});
@@ -298,6 +302,14 @@ impl App for AdhdMateriaApp {
 					}
 				}
 			});
+
+			if clear_done {
+				if done_cleared > 0 {
+					toast_success!("{} tasks cleared", done_cleared);
+				} else {
+					toast_info!("No tasks to clear");
+				}
+			}
 		});
 
 		if update_required && self.task_display_list.take().is_some() {
@@ -337,7 +349,11 @@ fn show_badge_list<T: BadgeType>(
 				for (idx, (badge, mut enabled)) in badge_list.iter_all().enumerate() {
 					let was_enabled = enabled;
 
-					ui.add(crate::scripts::badge::Badge::<T>::new(badge, &mut enabled, idx as i32 + 1));
+					ui.add(crate::scripts::badge::Badge::<T>::new(
+						badge,
+						&mut enabled,
+						idx as i32 + 1,
+					));
 
 					if was_enabled != enabled {
 						to_swap = Some(idx);
