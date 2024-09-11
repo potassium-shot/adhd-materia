@@ -1,5 +1,7 @@
 use std::sync::LazyLock;
 
+use convert_case::Casing;
+
 use crate::{
 	data_dir::{DataDir, DataDirError},
 	session::Session,
@@ -64,7 +66,7 @@ impl<T: BadgeType> egui::Widget for Badge<'_, '_, T> {
 			}
 
 			layout_job.append(
-				self.script_name,
+				self.script_name.to_case(convert_case::Case::Title).as_str(),
 				0.0,
 				egui::TextFormat::simple(
 					egui::FontId::proportional(16.0),

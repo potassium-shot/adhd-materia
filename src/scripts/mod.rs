@@ -4,6 +4,7 @@ use std::{
 	sync::{Mutex, MutexGuard},
 };
 
+use chrono::Datelike;
 use pocketpy_sys::*;
 
 use value::{AnyIntoPocketPyValue, IntoPocketPyValue};
@@ -31,6 +32,44 @@ macro_rules! pyprintln {
 			),*);
 		}
 	};
+}
+
+pub fn new_py_date_py_values(
+	out: *mut py_TValue,
+	year: *mut py_TValue,
+	month: *mut py_TValue,
+	day: *mut py_TValue,
+) -> bool {
+	unsafe {
+		py_newobject(
+			out,
+			py_totype(py_getglobal(py_name(c"Date".as_ptr()))),
+			-1,
+			0,
+		);
+
+		py_setdict(out, py_name(c"year".as_ptr()), year);
+		py_setdict(out, py_name(c"month".as_ptr()), month);
+		py_setdict(out, py_name(c"day".as_ptr()), day);
+		true
+	}
+}
+
+pub fn new_py_date(out: *mut py_TValue, date: &chrono::NaiveDate) -> bool {
+	unsafe {
+		for (i, element) in [
+			date.year() as i64,
+			date.month0() as i64 + 1,
+			date.day0() as i64 + 1,
+		]
+		.into_iter()
+		.enumerate()
+		{
+			py_newint(py_getreg(i as i32 + 5), element);
+		}
+
+		new_py_date_py_values(out, py_getreg(5), py_getreg(6), py_getreg(7))
+	}
 }
 
 pub(crate) struct PocketPyLock<'lock>(MutexGuard<'lock, Mutex<()>>);
@@ -135,7 +174,7 @@ impl PocketPyLock<'_> {
 			py_setglobal(py_name(c"Tag".as_ptr()), py_tpobject(tag_type));
 
 			#[allow(non_snake_case)]
-			unsafe extern "C" fn tag___new__(
+			unsafe extern "C" fn tag____new__(
 				_argc: std::os::raw::c_int,
 				_argv: *mut py_TValue,
 			) -> bool {
@@ -148,7 +187,87 @@ impl PocketPyLock<'_> {
 				true
 			}
 
-			py_bindmethod(tag_type, c"__new__".as_ptr(), Some(tag___new__));
+			py_bindmethod(tag_type, c"__new__".as_ptr(), Some(tag____new__));
+
+			// Create the Date python type
+			let date_type = py_newtype(
+				c"Date".as_ptr(),
+				py_totype(py_getbuiltin(py_name(c"object".as_ptr()))),
+				null_mut(),
+				None,
+			);
+
+			py_setglobal(py_name(c"Date".as_ptr()), py_tpobject(date_type));
+
+			#[allow(non_snake_case)]
+			unsafe extern "C" fn date____new__(
+				argc: std::os::raw::c_int,
+				argv: *mut py_TValue,
+			) -> bool {
+				if argc != 4 {
+					py_newnone(py_retval());
+					return py_exception(
+						py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+						c"Expected 3 arguments".as_ptr(),
+					);
+				}
+
+				let year = ((argv as usize) + size_of::<usize>() * 2) as *mut py_TValue;
+				let month = ((argv as usize) + size_of::<usize>() * 4) as *mut py_TValue;
+				let day = ((argv as usize) + size_of::<usize>() * 6) as *mut py_TValue;
+
+				for arg in [year, month, day] {
+					if !py_istype(arg, py_totype(py_getbuiltin(py_name(c"int".as_ptr())))) {
+						py_newnone(py_retval());
+						return py_exception(
+							py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+							c"Date expects integer arguments".as_ptr(),
+						);
+					}
+				}
+
+				new_py_date_py_values(py_retval(), year, month, day)
+			}
+
+			py_bindmethod(date_type, c"__new__".as_ptr(), Some(date____new__));
+
+			#[allow(non_snake_case)]
+			unsafe extern "C" fn date____str_____repr__(
+				argc: std::os::raw::c_int,
+				argv: *mut py_TValue,
+			) -> bool {
+				if argc != 1 {
+					py_newnone(py_retval());
+					return py_exception(
+						py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+						c"Expected 0 argument".as_ptr(),
+					);
+				}
+
+				let self_ = argv;
+
+				let mut element_iter = [c"year", c"month", c"day"]
+					.into_iter()
+					.map(|el| py_toint(py_getdict(self_, py_name(el.as_ptr()))));
+
+				let text = CString::new(format!(
+					"{}-{}-{}",
+					element_iter.next().unwrap(),
+					element_iter.next().unwrap(),
+					element_iter.next().unwrap()
+				))
+				.unwrap();
+
+				py_newstr(py_retval(), text.as_ptr());
+				true
+			}
+
+			py_bindmethod(date_type, c"__str__".as_ptr(), Some(date____str_____repr__));
+			py_bindmethod(
+				date_type,
+				c"__repr__".as_ptr(),
+				Some(date____str_____repr__),
+			);
 		}
 
 		println!("PocketPy initialized");
@@ -157,7 +276,7 @@ impl PocketPyLock<'_> {
 	}
 }
 
-pub(crate) struct PocketPyLockGuard<'lock>(MutexGuard<'lock, ()>);
+pub(crate) struct PocketPyLockGuard<'lock>(#[allow(dead_code)] MutexGuard<'lock, ()>);
 
 impl<'lock> PocketPyLock<'lock> {
 	pub fn lock(&'lock self) -> PocketPyLockGuard<'lock> {
@@ -181,10 +300,6 @@ pub struct PocketPyScript {
 }
 
 impl PocketPyScript {
-	pub fn new(name: String, code: String) -> Self {
-		Self { name, code }
-	}
-
 	pub fn load(path: impl AsRef<std::path::Path>) -> Result<Self, PocketPyScriptError> {
 		let path = path.as_ref();
 		let code = std::fs::read_to_string(path)?;
@@ -276,6 +391,7 @@ impl PocketPyScript {
 		}
 	}
 
+	#[allow(dead_code)]
 	pub fn execute_function<ReturnType: IntoPocketPyValue + 'static>(
 		&self,
 		lock: PocketPyLockGuard<'_>,

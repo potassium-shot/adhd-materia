@@ -7,7 +7,7 @@ use crate::{
 	task::Task,
 };
 
-use super::PocketPyScriptError;
+use super::{new_py_date, PocketPyScriptError};
 
 pub trait IntoPocketPyValue {
 	fn push_pocketpy_value(&self);
@@ -203,7 +203,9 @@ impl IntoPocketPyValue for TagValue {
 				TagValue::Bool(b) => py_newbool(r0, *b),
 				TagValue::Int(i) => py_newint(r0, *i),
 				TagValue::Float(f) => py_newfloat(r0, *f),
-				TagValue::Date(d) => todo!(),
+				TagValue::Date(d) => {
+					new_py_date(r0, d);
+				}
 				TagValue::Text(t) => {
 					py_newstr(r0, CString::new(t.as_str()).unwrap_or_default().as_ptr())
 				}
