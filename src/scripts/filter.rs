@@ -19,8 +19,8 @@ impl BadgeType for FilterBadgeType {
 		data_dir.filter_scripts()
 	}
 
-	fn allow_multiple() -> bool {
-		true
+	fn display_order() -> bool {
+		false
 	}
 }
 

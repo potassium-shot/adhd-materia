@@ -19,8 +19,8 @@ impl BadgeType for SortingBadgeType {
 		data_dir.sorting_scripts()
 	}
 
-	fn allow_multiple() -> bool {
-		false
+	fn display_order() -> bool {
+		true
 	}
 }
 

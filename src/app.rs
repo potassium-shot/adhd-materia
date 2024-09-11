@@ -332,10 +332,20 @@ fn show_badge_list<T: BadgeType>(
 			ui.horizontal_wrapped(|ui| {
 				ui.label(egui::RichText::new(format!("{}: ", script_name)).size(16.0));
 
-				for (badge, mut enabled_ref) in badge_list.iter_mut() {
-					let mut enabled = enabled_ref.get();
-					ui.add(crate::scripts::badge::Badge::new(badge, &mut enabled));
-					enabled_ref.set(enabled);
+				let mut to_swap = None;
+
+				for (idx, (badge, mut enabled)) in badge_list.iter_all().enumerate() {
+					let was_enabled = enabled;
+
+					ui.add(crate::scripts::badge::Badge::<T>::new(badge, &mut enabled, idx as i32 + 1));
+
+					if was_enabled != enabled {
+						to_swap = Some(idx);
+					}
+				}
+
+				if let Some(idx) = to_swap {
+					badge_list.swap(idx);
 				}
 			});
 		}
