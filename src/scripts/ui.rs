@@ -56,10 +56,16 @@ impl<'script> ScriptWidget<'script> {
 								}
 							});
 
-							ui.add(
-								egui::TextEdit::multiline(&mut edited_script.code)
-									.code_editor()
-									.layouter(&mut layouter),
+							ui.with_layout(
+								egui::Layout::left_to_right(egui::Align::LEFT)
+									.with_main_justify(true),
+								|ui| {
+									ui.add(
+										egui::TextEdit::multiline(&mut edited_script.code)
+											.code_editor()
+											.layouter(&mut layouter),
+									);
+								},
 							);
 						}
 						super::list::ScriptEditorState::DisplayMode => {
@@ -81,12 +87,18 @@ impl<'script> ScriptWidget<'script> {
 							});
 							ui.separator();
 							ui.add_space(8.0);
-							ui.add_enabled(
-								false,
-								egui::TextEdit::multiline(&mut self.script.script.code)
-									.code_editor()
-									.layouter(&mut layouter),
-							);
+
+							ui.with_layout(
+								egui::Layout::left_to_right(egui::Align::LEFT)
+									.with_main_justify(true),
+								|ui| {
+								ui.add_enabled(
+									false,
+									egui::TextEdit::multiline(&mut self.script.script.code)
+										.code_editor()
+										.layouter(&mut layouter),
+								);
+							});
 						}
 					}
 				});

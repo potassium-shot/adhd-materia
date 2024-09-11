@@ -17,6 +17,19 @@ pub mod value;
 
 static POCKETPY_LOCK: Mutex<Mutex<()>> = Mutex::new(Mutex::new(()));
 
+macro_rules! pyprintln {
+	($fmt: expr, $($arg: expr),*) => {
+		unsafe {
+			println!($fmt, $(
+				{
+					py_repr($arg);
+					std::ffi::CStr::from_ptr(py_tostr(py_retval())).to_string_lossy().to_string()
+				}
+			),*);
+		}
+	};
+}
+
 pub(crate) struct PocketPyLock<'lock>(MutexGuard<'lock, Mutex<()>>);
 
 impl PocketPyLock<'_> {
@@ -25,6 +38,114 @@ impl PocketPyLock<'_> {
 
 		unsafe {
 			py_initialize();
+
+			// Create the Task python type
+			let task_type = py_newtype(
+				c"Task".as_ptr(),
+				py_totype(py_getbuiltin(py_name(c"object".as_ptr()))),
+				null_mut(),
+				None,
+			);
+
+			py_setglobal(py_name(c"Task".as_ptr()), py_tpobject(task_type));
+
+			#[allow(non_snake_case)]
+			unsafe extern "C" fn task____new__(
+				_argc: std::os::raw::c_int,
+				_argv: *mut py_TValue,
+			) -> bool {
+				py_newobject(
+					py_retval(),
+					py_totype(py_getglobal(py_name(c"Task".as_ptr()))),
+					-1,
+					0,
+				);
+				true
+			}
+
+			py_bindmethod(task_type, c"__new__".as_ptr(), Some(task____new__));
+
+			#[allow(non_snake_case)]
+			unsafe extern "C" fn task__get_tag_with_name(
+				argc: std::os::raw::c_int,
+				argv: *mut py_TValue,
+			) -> bool {
+				if argc != 2 {
+					py_newnone(py_retval());
+					return py_exception(
+						py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+						c"Expected 2 arguments".as_ptr(),
+					);
+				}
+
+				let self_ = argv;
+				let tag_name = ((argv as usize) + size_of::<usize>() * 2) as *mut py_TValue;
+				let tag_list = py_getdict(self_, py_name(c"tags".as_ptr()));
+
+				for i in 0..(py_list_len(tag_list)) {
+					let tag = py_list_getitem(tag_list, i);
+
+					if py_equal(py_getdict(tag, py_name(c"name".as_ptr())), tag_name) == 1 {
+						py_assign(py_retval(), tag);
+						return true;
+					}
+				}
+
+				py_newnone(py_retval());
+				true
+			}
+
+			py_bindmethod(
+				task_type,
+				c"get_tag_with_name".as_ptr(),
+				Some(task__get_tag_with_name),
+			);
+
+			#[allow(non_snake_case)]
+			unsafe extern "C" fn task__has_tag_with_name(
+				argc: std::os::raw::c_int,
+				argv: *mut py_TValue,
+			) -> bool {
+				if task__get_tag_with_name(argc, argv) {
+					py_newbool(py_retval(), !py_isidentical(py_retval(), py_None));
+					true
+				} else {
+					py_newnone(py_retval());
+					false
+				}
+			}
+
+			py_bindmethod(
+				task_type,
+				c"has_tag_with_name".as_ptr(),
+				Some(task__has_tag_with_name),
+			);
+
+			// Create the Tag python type
+			let tag_type = py_newtype(
+				c"Tag".as_ptr(),
+				py_totype(py_getbuiltin(py_name(c"object".as_ptr()))),
+				null_mut(),
+				None,
+			);
+
+			py_setglobal(py_name(c"Tag".as_ptr()), py_tpobject(tag_type));
+
+			#[allow(non_snake_case)]
+			unsafe extern "C" fn tag___new__(
+				_argc: std::os::raw::c_int,
+				_argv: *mut py_TValue,
+			) -> bool {
+				py_newobject(
+					py_retval(),
+					py_totype(py_getglobal(py_name(c"Tag".as_ptr()))),
+					-1,
+					0,
+				);
+				true
+			}
+
+			py_bindmethod(tag_type, c"__new__".as_ptr(), Some(tag___new__));
 		}
 
 		println!("PocketPy initialized");

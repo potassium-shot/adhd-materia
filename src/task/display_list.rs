@@ -33,18 +33,23 @@ impl TaskDisplayList {
 								.join(filter_script_name)
 								.with_extension("py"),
 						) {
-							Ok(script) => script
-								.execute_function_for::<bool>(
-									crate::app::script_lock(),
-									script.name.as_str(),
-									[(
-										"test",
-										(0..task_list.len())
-											.map(|_| Box::new(0i64) as AnyIntoPocketPyValue)
-											.collect(),
-									)],
-								)
-								.ok(),
+							Ok(script) => match script.execute_function_for::<bool>(
+								crate::app::script_lock(),
+								script.name.as_str(),
+								[(
+									"task",
+									task_list
+										.iter()
+										.map(|task| Box::new((*task).clone()) as AnyIntoPocketPyValue)
+										.collect(),
+								)],
+							) {
+								Ok(passes) => Some(passes),
+								Err(e) => {
+									eprintln!("Error in filter script:\n{}", e);
+									None
+								}
+							},
 							Err(_) => None,
 						}
 					}) {

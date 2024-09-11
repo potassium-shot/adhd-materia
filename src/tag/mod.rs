@@ -10,8 +10,8 @@ mod ui;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Tag {
-	name: String,
-	value: Option<TagValue>,
+	pub name: String,
+	pub value: Option<TagValue>,
 
 	#[serde(skip)]
 	editing_text: Option<String>,
