@@ -7,7 +7,7 @@ use crate::{
 	task::Task,
 };
 
-use super::{new_py_date, PocketPyScriptError};
+use super::{py_bindings::new_py_date, PocketPyScriptError};
 
 pub trait IntoPocketPyValue {
 	fn push_pocketpy_value(&self);
