@@ -22,6 +22,14 @@ impl BadgeType for FilterBadgeType {
 	fn display_order() -> bool {
 		false
 	}
+	
+	fn get_session_badge_list(session: &crate::session::Session) -> &Vec<String> {
+		&session.set_filters
+	}
+
+	fn get_session_badge_list_mut(session: &mut crate::session::Session) -> &mut Vec<String> {
+		&mut session.set_filters
+	}
 }
 
 pub type FilterList = BadgeList<FilterBadgeType>;

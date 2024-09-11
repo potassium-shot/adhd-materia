@@ -22,6 +22,14 @@ impl BadgeType for SortingBadgeType {
 	fn display_order() -> bool {
 		true
 	}
+
+	fn get_session_badge_list(session: &crate::session::Session) -> &Vec<String> {
+		&session.set_sortings
+	}
+
+	fn get_session_badge_list_mut(session: &mut crate::session::Session) -> &mut Vec<String> {
+		&mut session.set_sortings
+	}
 }
 
 pub type SortingList = BadgeList<SortingBadgeType>;

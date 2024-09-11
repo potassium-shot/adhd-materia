@@ -77,7 +77,7 @@ impl TaskDisplayList {
 								None
 							}
 						},
-						Err(e) => None,
+						Err(_) => None,
 					}
 				}) {
 					task_orderings.push(ordering);

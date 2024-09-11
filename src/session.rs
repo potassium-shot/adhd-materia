@@ -1,6 +1,6 @@
 use std::{
 	str::FromStr,
-	sync::{LazyLock, Mutex},
+	sync::{LazyLock, Mutex, MutexGuard},
 };
 
 use crate::data_dir::DataDirError;
@@ -12,6 +12,18 @@ static SESSION: LazyLock<Mutex<Session>> =
 #[serde(default)]
 pub struct Session {
 	pub last_session: chrono::NaiveDate,
+	pub set_filters: Vec<String>,
+	pub set_sortings: Vec<String>,
+}
+
+impl Default for Session {
+	fn default() -> Self {
+		Self {
+			last_session: chrono::Local::now().date_naive(),
+			set_filters: Vec::new(),
+			set_sortings: Vec::new(),
+		}
+	}
 }
 
 impl Session {
@@ -23,6 +35,10 @@ impl Session {
 		std::fs::write(crate::data_dir()?.session(), self.to_string())?;
 
 		Ok(())
+	}
+
+	pub fn current() -> MutexGuard<'static, Self> {
+		SESSION.lock().expect("session should be lockable")
 	}
 
 	pub fn mutate(f: impl FnOnce(&mut Self)) -> Result<(), SessionError> {
@@ -46,14 +62,6 @@ impl ToString for Session {
 	fn to_string(&self) -> String {
 		ron::ser::to_string_pretty(self, ron::ser::PrettyConfig::default())
 			.expect("ron serialization of Session should not fail")
-	}
-}
-
-impl Default for Session {
-	fn default() -> Self {
-		Self {
-			last_session: chrono::Local::now().date_naive(),
-		}
 	}
 }
 

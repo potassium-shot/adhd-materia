@@ -1,6 +1,10 @@
 use std::sync::LazyLock;
 
-use crate::data_dir::{DataDir, DataDirError};
+use crate::{
+	data_dir::{DataDir, DataDirError},
+	session::Session,
+	toast_error,
+};
 
 use super::list::{ScriptEditor, ScriptList};
 
@@ -87,6 +91,9 @@ pub trait BadgeType {
 	}
 
 	fn display_order() -> bool;
+
+	fn get_session_badge_list(session: &Session) -> &Vec<String>;
+	fn get_session_badge_list_mut(session: &mut Session) -> &mut Vec<String>;
 }
 
 pub struct BadgeList<T> {
@@ -98,13 +105,26 @@ pub struct BadgeList<T> {
 
 impl<T: BadgeType> BadgeList<T> {
 	pub fn new() -> Result<Self, &'static DataDirError> {
+		let set: Vec<String> = T::get_session_badge_list(&Session::current())
+				.iter()
+				.filter(|badge| {
+					if let Ok(path) = T::get_path() {
+						path.join(badge).with_extension("py").exists()
+					} else {
+						false
+					}
+				})
+				.cloned()
+				.collect();
+
 		Ok(Self {
 			unset: ScriptList::new()?
 				.0
 				.scripts_mut()
 				.map(|script: &mut ScriptEditor<T>| script.script.name.clone())
+				.filter(|name| !set.contains(name))
 				.collect(),
-			set: Vec::new(),
+			set,
 			changed: true,
 			_t: std::marker::PhantomData,
 		})
@@ -148,6 +168,12 @@ impl<T: BadgeType> BadgeList<T> {
 		}
 
 		self.changed = true;
+
+		if let Err(e) = Session::mutate(|session| {
+			self.set.clone_into(T::get_session_badge_list_mut(session));
+		}) {
+			toast_error!("Could not save session: {}", e);
+		}
 	}
 }
 
