@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use uuid::Uuid;
+
 use crate::{
 	settings::{Settings, DEFAULT_DATE_FORMAT},
 	tag::Tag,
@@ -15,8 +19,8 @@ pub struct TaskWidget<'task, T> {
 }
 
 impl TaskWidget<'_, NormalTaskData> {
-	pub fn show(mut self, ui: &mut egui::Ui) -> bool {
-		self.draw_task_widget(ui, TaskPath::Tasks, true)
+	pub fn show(mut self, ui: &mut egui::Ui, task_names: &HashMap<Uuid, String>) -> bool {
+		self.draw_task_widget(ui, TaskPath::Tasks, true, task_names)
 	}
 }
 
@@ -27,7 +31,7 @@ impl<'task, T: TaskTypeData> TaskWidget<'task, T> {
 }
 
 impl TaskWidget<'_, ScheduledTask> {
-	pub fn show(mut self, ui: &mut egui::Ui) -> bool {
+	pub fn show(mut self, ui: &mut egui::Ui, task_names: &HashMap<Uuid, String>) -> bool {
 		let uuid = self.task.get_uuid().clone();
 
 		ui.push_id(uuid, |ui| {
@@ -102,7 +106,7 @@ impl TaskWidget<'_, ScheduledTask> {
 							});
 						}
 					}
-					self.draw_task_widget(ui, TaskPath::Scheduled, false)
+					self.draw_task_widget(ui, TaskPath::Scheduled, false, task_names)
 				})
 				.inner
 			})
@@ -113,7 +117,13 @@ impl TaskWidget<'_, ScheduledTask> {
 }
 
 impl<T: TaskTypeData> TaskWidget<'_, T> {
-	fn draw_task_widget(&mut self, ui: &mut egui::Ui, path: TaskPath, can_be_done: bool) -> bool {
+	fn draw_task_widget(
+		&mut self,
+		ui: &mut egui::Ui,
+		path: TaskPath,
+		can_be_done: bool,
+		task_names: &HashMap<Uuid, String>,
+	) -> bool {
 		let mut changed = false;
 
 		ui.push_id(*self.task.get_uuid(), |ui| {
@@ -179,11 +189,23 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 
 							ui.horizontal_wrapped(|ui| {
 								for tag in self.task.tags.iter_mut() {
-									tag.widget(false).show(ui);
+									tag.widget(false).show(ui, task_names);
 									ui.add_space(8.0);
 								}
 							});
 						}
+
+						ui.add_space(4.0);
+
+						ui.horizontal(|ui| {
+							if ui.small_button("📋").clicked() {
+								ui.output_mut(|o| {
+									o.copied_text = self.task.get_uuid().to_string();
+								});
+							}
+
+							ui.small(egui::RichText::new(self.task.get_uuid().to_string()).weak());
+						});
 					});
 				}
 				TaskState::Edit { no_buttons, .. } => {
@@ -232,12 +254,14 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 							let mut tags_to_swap = None;
 
 							for (i, tag) in self.task.tags.iter_mut().enumerate() {
-								if let Some(swap_dir) = tag.widget(true).show(ui) {
+								if let Some(swap_dir) = tag.widget(true).show(ui, task_names) {
 									tags_to_swap = Some((
 										i as isize,
 										match swap_dir {
 											crate::tag::TagSwapRequest::Forward => (i as isize) + 1,
-											crate::tag::TagSwapRequest::Backward => (i as isize) - 1,
+											crate::tag::TagSwapRequest::Backward => {
+												(i as isize) - 1
+											}
 										},
 									));
 								}

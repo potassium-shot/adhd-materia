@@ -4,6 +4,7 @@ use std::{
 };
 
 use pocketpy_sys::*;
+use uuid::Uuid;
 
 use crate::{
 	spytvalue,
@@ -277,7 +278,17 @@ impl IntoPocketPyValue for TagValue {
 				}
 				TagValue::Tag(t) => {
 					t.into_pocketpy_value(out);
-					return;
+				}
+				TagValue::TaskReference(u) => {
+					let cstring = CString::new(u.to_string()).unwrap(); // todo! change to new task ref type
+					py_newobject(
+						out,
+						py_totype(py_getglobal(py_name(c"TaskRef".as_ptr()))),
+						1,
+						0,
+					);
+					py_newstr(r0, cstring.as_ptr());
+					py_setslot(out, 0, r0);
 				}
 			}
 		}
@@ -356,6 +367,12 @@ impl IntoPocketPyValue for TagValue {
 				Ok(Self::Dictionary(dict.0))
 			} else if py_istype(value, py_totype(py_getglobal(py_name(c"Tag".as_ptr())))) {
 				Ok(Self::Tag(Box::new(Tag::from_pocketpy_value_ptr(value)?)))
+			} else if py_istype(value, py_totype(py_getglobal(py_name(c"TaskRef".as_ptr())))) {
+				Ok(Self::TaskReference(
+					CStr::from_ptr(py_tostr(py_getslot(value, 0)))
+						.to_string_lossy()
+						.parse::<Uuid>()?,
+				))
 			} else {
 				Err(PocketPyScriptError::WrongType)
 			}

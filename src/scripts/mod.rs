@@ -227,6 +227,9 @@ pub enum PocketPyScriptError {
 
 	#[error("The provided date is out of bounds")]
 	DateOutOfBounds,
+
+	#[error("Invalid task reference uuid")]
+	InvalidTaskReferenceUuid(#[from] #[source] uuid::Error),
 }
 
 #[cfg(test)]

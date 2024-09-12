@@ -9,6 +9,7 @@ use ui::TagWidget;
 mod ui;
 
 pub use ui::TagSwapRequest;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Tag {
@@ -29,6 +30,7 @@ pub enum TagValue {
 	List(Vec<TagValue>),
 	Dictionary(HashMap<String, TagValue>),
 	Tag(Box<Tag>),
+	TaskReference(Uuid),
 }
 
 impl Default for Tag {
@@ -234,7 +236,7 @@ impl TagValue {
 
 				while let Some(c) = chars.peek_with_whitespace() {
 					match c {
-						'0'..='9' | '.' | '-' => {
+						'0'..='9' | '.' | '-' | 'a'..='f' | 'A'..='F' => {
 							chars.next_with_whitespace().expect("peek returned some");
 							s.push(c);
 							started = true;
@@ -250,6 +252,8 @@ impl TagValue {
 
 				if let Ok(date) = s.parse::<NaiveDate>() {
 					Ok(Self::Date(date))
+				} else if let Ok(uuid) = s.parse::<Uuid>() {
+					Ok(Self::TaskReference(uuid))
 				} else {
 					if let Ok(int) = s.parse::<i64>() {
 						Ok(Self::Int(int))
@@ -487,6 +491,7 @@ impl ToString for TagValue {
 				format!("{{{}}}", inner)
 			}
 			Self::Tag(tag) => tag.to_string(),
+			Self::TaskReference(uuid) => uuid.to_string(),
 		}
 	}
 }

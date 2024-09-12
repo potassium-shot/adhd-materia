@@ -80,7 +80,23 @@ pub unsafe fn initialize_bindings() {
 		Some(date____str_____repr__),
 	);
 
-	// Create the Session type
+	// Create the TaskRef python type
+	let task_ref_type = py_newtype(
+		c"TaskRef".as_ptr(),
+		py_totype(py_getbuiltin(py_name(c"object".as_ptr()))),
+		null_mut(),
+		None,
+	);
+	py_setglobal(py_name(c"TaskRef".as_ptr()), py_tpobject(task_ref_type));
+	py_bindmethod(task_ref_type, c"__new__".as_ptr(), Some(task_ref____new__));
+	py_bindmethod(task_ref_type, c"__str__".as_ptr(), Some(task_ref____str__));
+	py_bindmethod(
+		task_ref_type,
+		c"__repr__".as_ptr(),
+		Some(task_ref____repr__),
+	);
+
+	// Create the Session python type
 	let session_type = py_newtype(
 		c"Session".as_ptr(),
 		py_totype(py_getbuiltin(py_name(c"object".as_ptr()))),
@@ -328,6 +344,65 @@ pub fn new_py_date(out: *mut py_TValue, date: &chrono::NaiveDate) -> bool {
 	}
 }
 
+unsafe extern "C" fn task_ref____new__(argc: std::os::raw::c_int, argv: *mut py_TValue) -> bool {
+	if argc != 2 {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected 1 argument".as_ptr(),
+		);
+	}
+
+	let arg = ((argv as usize) + size_of::<usize>() * 2) as *mut py_TValue;
+
+	if !py_istype(arg, py_totype(py_getbuiltin(py_name(c"str".as_ptr())))) {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected string argument".as_ptr(),
+		);
+	}
+
+	py_newobject(
+		py_retval(),
+		py_totype(py_getglobal(py_name(c"TaskRef".as_ptr()))),
+		1,
+		0,
+	);
+	py_setslot(py_retval(), 0, arg);
+	true
+}
+
+unsafe extern "C" fn task_ref____str__(argc: std::os::raw::c_int, argv: *mut py_TValue) -> bool {
+	if argc != 1 {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected 0 argument".as_ptr(),
+		);
+	}
+
+	py_assign(py_retval(), py_getslot(argv, 0));
+	true
+}
+
+unsafe extern "C" fn task_ref____repr__(argc: std::os::raw::c_int, argv: *mut py_TValue) -> bool {
+	if argc != 1 {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected 0 argument".as_ptr(),
+		);
+	}
+
+	let repr = CString::new(format!(
+		"TaskRef({})",
+		CStr::from_ptr(py_tostr(py_getslot(argv, 0))).to_string_lossy()
+	))
+	.unwrap();
+	py_newstr(py_retval(), repr.as_ptr());
+	true
+}
 unsafe extern "C" fn run_standalone_script(
 	argc: std::os::raw::c_int,
 	argv: *mut py_TValue,

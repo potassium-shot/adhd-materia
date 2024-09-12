@@ -1,6 +1,7 @@
-use std::sync::LazyLock;
+use std::{collections::HashMap, sync::LazyLock};
 
 use convert_case::Casing;
+use uuid::Uuid;
 
 use crate::{
 	settings::{Settings, DEFAULT_DATE_FORMAT},
@@ -41,7 +42,11 @@ pub enum TagSwapRequest {
 }
 
 impl TagWidget<'_> {
-	pub fn show(self, ui: &mut egui::Ui) -> Option<TagSwapRequest> {
+	pub fn show(
+		self,
+		ui: &mut egui::Ui,
+		task_names: &HashMap<Uuid, String>,
+	) -> Option<TagSwapRequest> {
 		if self.edit_mode {
 			let mut swap_req = None;
 
@@ -64,7 +69,7 @@ impl TagWidget<'_> {
 
 			ui.allocate_ui_at_rect(rect.with_max_x(ui.available_width()), |ui| {
 				ui.horizontal_centered(|ui| {
-					Self::draw_tag(ui, &self.tag);
+					Self::draw_tag(ui, &self.tag, task_names);
 				});
 			});
 
@@ -74,7 +79,11 @@ impl TagWidget<'_> {
 }
 
 impl TagWidget<'_> {
-	fn draw_tag(ui: &mut egui::Ui, tag: &Tag) -> egui::Response {
+	fn draw_tag(
+		ui: &mut egui::Ui,
+		tag: &Tag,
+		task_names: &HashMap<Uuid, String>,
+	) -> egui::Response {
 		let col = get_tag_color(tag);
 
 		egui::Frame::group(ui.style())
@@ -87,28 +96,33 @@ impl TagWidget<'_> {
 				ui.label(tag.name.to_case(convert_case::Case::Title));
 
 				if let Some(value) = &tag.value {
-					Self::draw_tag_value(ui, value, col);
+					Self::draw_tag_value(ui, value, col, task_names);
 				}
 			})
 			.response
 	}
 
-	fn draw_tag_value(ui: &mut egui::Ui, tag_value: &TagValue, color: egui::Color32) {
+	fn draw_tag_value(
+		ui: &mut egui::Ui,
+		tag_value: &TagValue,
+		color: egui::Color32,
+		task_names: &HashMap<Uuid, String>,
+	) {
 		let color = color.lerp_to_gamma(egui::Color32::WHITE, 0.3);
 
 		match tag_value {
 			TagValue::Tag(tag) => {
-				Self::draw_tag(ui, tag);
+				Self::draw_tag(ui, tag, task_names);
 			}
 			TagValue::List(list) => {
 				for value in list {
-					Self::draw_tag_value(ui, value, color);
+					Self::draw_tag_value(ui, value, color, task_names);
 				}
 			}
 			TagValue::Dictionary(dict) => {
 				for (key, value) in dict {
 					ui.weak(key);
-					Self::draw_tag_value(ui, value, color);
+					Self::draw_tag_value(ui, value, color, task_names);
 				}
 			}
 			other => {
@@ -135,6 +149,9 @@ impl TagWidget<'_> {
 							TagValue::List(_) | TagValue::Dictionary(_) | TagValue::Tag(_) => {
 								unreachable!("already handled")
 							}
+							TagValue::TaskReference(uuid) => egui::RichText::new(
+								task_names.get(uuid).map(|s| s.as_str()).unwrap_or("???"),
+							).underline().color(Settings::get().theme.get_catppuccin().yellow),
 						});
 					});
 			}

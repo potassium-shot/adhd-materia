@@ -1,6 +1,11 @@
-use std::{collections::VecDeque, sync::Mutex, time::Duration};
+use std::{
+	collections::{HashMap, VecDeque},
+	sync::Mutex,
+	time::Duration,
+};
 
 use eframe::{App, CreationContext};
+use uuid::Uuid;
 
 use crate::{
 	data_dir::DataDirError,
@@ -38,6 +43,7 @@ pub fn push_script_to_waitlist(script_name: String) {
 pub struct AdhdMateriaApp {
 	task_list: Result<TaskList, TaskListError>,
 	task_display_list: Option<TaskDisplayList>,
+	task_name_cache: HashMap<Uuid, String>,
 	side_panel: SidePanel,
 
 	interactable: bool,
@@ -118,6 +124,7 @@ impl AdhdMateriaApp {
 					TaskDisplayList::new(task_list, filter_list, sorting_list)
 				}),
 			task_list: task_list.map(|(list, _)| list),
+			task_name_cache: HashMap::new(),
 			side_panel: SidePanel::default(),
 
 			interactable: true,
@@ -178,7 +185,7 @@ impl App for AdhdMateriaApp {
 			.min_width(192.0)
 			.default_width(384.0)
 			.show_animated(ctx, self.side_panel.is_shown(), |ui| {
-				self.side_panel.show(ui);
+				self.side_panel.show(ui, &self.task_name_cache);
 			});
 
 		if left_panel_was_shown && !self.side_panel.is_shown() {
@@ -240,7 +247,7 @@ impl App for AdhdMateriaApp {
 									.show(ui, |ui| {
 										for task in self.task_display_list.as_ref().expect("display list should be Some when task list is ok").tasks() {
 											let task = task_list.get_mut(task).expect("task display list should only have valid uuids");
-											update_required |= task.widget().show(ui);
+											update_required |= task.widget().show(ui, &self.task_name_cache);
 											ui.end_row();
 
 											if task.is_pending_delete() {
@@ -319,14 +326,25 @@ impl App for AdhdMateriaApp {
 			}
 		});
 
-		if update_required && self.task_display_list.take().is_some() {
-			self.task_display_list = Some(TaskDisplayList::new(
-				self.task_list.as_ref().expect("task display list is some"),
-				self.filter_list
-					.as_ref()
-					.expect("task display list is some"),
-				self.sorting_list.as_ref().expect("task display is some"),
-			));
+		if update_required {
+			if self.task_display_list.take().is_some() {
+				self.task_display_list = Some(TaskDisplayList::new(
+					self.task_list.as_ref().expect("task display list is some"),
+					self.filter_list
+						.as_ref()
+						.expect("task display list is some"),
+					self.sorting_list.as_ref().expect("task display is some"),
+				));
+			}
+
+			if let Ok(task_list) = self.task_list.as_ref() {
+				self.task_name_cache.clear();
+
+				for task in task_list.tasks() {
+					self.task_name_cache
+						.insert(task.get_uuid().clone(), task.name.clone());
+				}
+			}
 		}
 
 		let mut script_waitlist = SCRIPTS_WAITLIST.lock().unwrap();

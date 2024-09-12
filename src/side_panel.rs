@@ -1,4 +1,6 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
+
+use uuid::Uuid;
 
 use crate::{
 	data_dir::DataDirError,
@@ -62,7 +64,7 @@ pub enum SidePanel {
 }
 
 impl SidePanel {
-	pub fn show(&mut self, ui: &mut egui::Ui) {
+	pub fn show(&mut self, ui: &mut egui::Ui, task_names: &HashMap<Uuid, String>) {
 		match self {
 			Self::Hidden => {}
 			Self::ScheduledTasks {
@@ -91,7 +93,7 @@ impl SidePanel {
 										.striped(true)
 										.show(ui, |ui| {
 											for task in task_list.tasks_mut() {
-												task.widget().show(ui);
+												task.widget().show(ui, task_names);
 												ui.end_row();
 
 												if task.is_pending_delete() {
@@ -264,7 +266,7 @@ impl SidePanel {
 						settings.default_task.edit_no_buttons();
 
 						ui.label("Default task");
-						settings.default_task.widget().show(ui);
+						settings.default_task.widget().show(ui, task_names);
 						ui.end_row();
 
 						ui.label("Repeating task rewind");
