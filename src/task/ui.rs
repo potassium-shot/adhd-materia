@@ -140,7 +140,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 									ui.visuals_mut().widgets.hovered.weak_bg_fill = bg_color;
 
 									if ui.button(egui::RichText::new("✅").size(20.0)).clicked() {
-										self.task.tags.push(done_tag.clone());
+										self.task.tags.insert(0, done_tag.clone());
 
 										if let Err(e) = self.task.save(path) {
 											toast_error!("Could not save task: {}", e);
