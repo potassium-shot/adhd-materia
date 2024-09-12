@@ -6,7 +6,7 @@ use crate::{
 	scripts::{
 		badge::BadgeType,
 		filter::{FilterBadgeType, DEFAULT_FILTER_SCRIPT},
-		list::ScriptList,
+		list::{ScriptEditorDeletionState, ScriptList},
 		sorting::{SortingBadgeType, DEFAULT_SORTING_SCRIPT},
 		standalone_script::{StandaloneScriptBadgeType, DEFAULT_STANDALONE_SCRIPT},
 		PocketPyScript,
@@ -33,6 +33,7 @@ macro_rules! open_scripts {
 				}
 				Err(e) => Err(e),
 			},
+			interactable: true,
 		}
 	};
 }
@@ -47,12 +48,15 @@ pub enum SidePanel {
 	},
 	FilterScripts {
 		script_list: Result<ScriptList<FilterBadgeType>, &'static DataDirError>,
+		interactable: bool,
 	},
 	SortingScripts {
 		script_list: Result<ScriptList<SortingBadgeType>, &'static DataDirError>,
+		interactable: bool,
 	},
 	Scripts {
 		script_list: Result<ScriptList<StandaloneScriptBadgeType>, &'static DataDirError>,
+		interactable: bool,
 	},
 	Settings,
 }
@@ -164,14 +168,41 @@ impl SidePanel {
 					}
 				});
 			}
-			Self::FilterScripts { script_list } => {
-				show_scripts(ui, script_list, "Filter", &DEFAULT_FILTER_SCRIPT);
+			Self::FilterScripts {
+				script_list,
+				interactable,
+			} => {
+				show_scripts(
+					ui,
+					script_list,
+					"Filter",
+					&DEFAULT_FILTER_SCRIPT,
+					interactable,
+				);
 			}
-			Self::SortingScripts { script_list } => {
-				show_scripts(ui, script_list, "Sorting", &DEFAULT_SORTING_SCRIPT);
+			Self::SortingScripts {
+				script_list,
+				interactable,
+			} => {
+				show_scripts(
+					ui,
+					script_list,
+					"Sorting",
+					&DEFAULT_SORTING_SCRIPT,
+					interactable,
+				);
 			}
-			Self::Scripts { script_list } => {
-				show_scripts(ui, script_list, "Standalone", &DEFAULT_STANDALONE_SCRIPT);
+			Self::Scripts {
+				script_list,
+				interactable,
+			} => {
+				show_scripts(
+					ui,
+					script_list,
+					"Standalone",
+					&DEFAULT_STANDALONE_SCRIPT,
+					interactable,
+				);
 			}
 			Self::Settings => {
 				ui.heading("Settings");
@@ -373,13 +404,13 @@ impl SidePanel {
 					list.save_all();
 				}
 			}
-			SidePanel::FilterScripts { script_list } => {
+			SidePanel::FilterScripts { script_list, .. } => {
 				close_scripts(script_list, "Filter");
 			}
-			SidePanel::SortingScripts { script_list } => {
+			SidePanel::SortingScripts { script_list, .. } => {
 				close_scripts(script_list, "Sorting");
 			}
-			SidePanel::Scripts { script_list } => {
+			SidePanel::Scripts { script_list, .. } => {
 				close_scripts(script_list, "Standalone");
 			}
 			SidePanel::Settings => {
@@ -419,39 +450,70 @@ fn show_scripts<T: BadgeType>(
 	script_list: &mut Result<ScriptList<T>, &DataDirError>,
 	script_name: &'static str,
 	default_script: &std::sync::LazyLock<PocketPyScript>,
+	interactable: &mut bool,
 ) {
-	ui.heading(format!("{} Scripts", script_name));
-	ui.separator();
-	ui.add_space(16.0);
+	ui.add_enabled_ui(*interactable, |ui| {
+		ui.heading(format!("{} Scripts", script_name));
+		ui.separator();
+		ui.add_space(16.0);
 
-	match script_list {
-		Ok(script_list) => {
-			egui::ScrollArea::vertical()
-				.auto_shrink(false)
-				.show(ui, |ui| {
-					ui.vertical_centered_justified(|ui| {
-						for script in script_list.scripts_mut() {
-							script.widget().show(ui);
-						}
+		match script_list {
+			Ok(script_list) => {
+				egui::ScrollArea::vertical()
+					.auto_shrink(false)
+					.show(ui, |ui| {
+						ui.vertical_centered_justified(|ui| {
+							for script in script_list.scripts_mut() {
+								script.widget().show(ui);
 
-						script_list.cleanup();
+								if script.deletion_state == ScriptEditorDeletionState::Pending {
+									*interactable = false;
 
-						if ui.button(format!("New {} Script", script_name)).clicked() {
-							if let Err(e) = script_list.add((*default_script).clone()) {
-								toast_error!("Couldn't create {} script: {}", script_name, e);
+									if let Some(result) = OkCancelDialog::default()
+										.with_title(format!(
+											"Delete {} Script {}?",
+											script_name, script.script.name
+										))
+										.with_subtext("You cannot undo this action.")
+										.with_ok_text("Delete")
+										.with_ok_color(ui.style().visuals.error_fg_color)
+										.show(ui.ctx())
+									{
+										match result {
+											OkCancelResult::Ok => {
+												script.deletion_state =
+													ScriptEditorDeletionState::Marked;
+												*interactable = true;
+											}
+											OkCancelResult::Cancel => {
+												script.deletion_state =
+													ScriptEditorDeletionState::None;
+												*interactable = true;
+											}
+										}
+									}
+								}
 							}
-						}
+
+							script_list.cleanup();
+
+							if ui.button(format!("New {} Script", script_name)).clicked() {
+								if let Err(e) = script_list.add((*default_script).clone()) {
+									toast_error!("Couldn't create {} script: {}", script_name, e);
+								}
+							}
+						});
 					});
-				});
+			}
+			Err(e) => {
+				ui.label(
+					egui::RichText::new(format!("Couldn't load {} scripts: {}", script_name, e))
+						.color(ui.style().visuals.error_fg_color)
+						.heading(),
+				);
+			}
 		}
-		Err(e) => {
-			ui.label(
-				egui::RichText::new(format!("Couldn't load {} scripts: {}", script_name, e))
-					.color(ui.style().visuals.error_fg_color)
-					.heading(),
-			);
-		}
-	}
+	});
 }
 
 fn close_scripts<T: BadgeType>(

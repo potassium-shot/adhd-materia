@@ -2,7 +2,7 @@ use crate::{settings::Settings, toast_error};
 
 use super::{
 	badge::BadgeType,
-	list::{ScriptEditor, ScriptEditorStateKind},
+	list::{ScriptEditor, ScriptEditorDeletionState, ScriptEditorStateKind},
 };
 
 pub struct ScriptWidget<'script, T> {
@@ -123,7 +123,7 @@ impl<'script, T: BadgeType> ScriptWidget<'script, T> {
 			.response;
 
 		if mark_for_delete {
-			self.script.delete();
+			self.script.deletion_state = ScriptEditorDeletionState::Pending;
 		} else if switch_to_display {
 			if let Err(e) = self.script.display() {
 				toast_error!("Could not save script: {}", e);

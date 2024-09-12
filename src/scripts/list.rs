@@ -28,7 +28,7 @@ impl<T: BadgeType> ScriptList<T> {
 											ScriptEditor {
 												script: script,
 												state: ScriptEditorState::DisplayMode,
-												marked_for_deletion: false,
+												deletion_state: ScriptEditorDeletionState::None,
 												_t: std::marker::PhantomData,
 											},
 										);
@@ -56,7 +56,7 @@ impl<T: BadgeType> ScriptList<T> {
 			ScriptEditor {
 				state: ScriptEditorState::EditMode(script.clone()),
 				script,
-				marked_for_deletion: false,
+				deletion_state: ScriptEditorDeletionState::None,
 				_t: std::marker::PhantomData,
 			},
 		);
@@ -80,7 +80,7 @@ impl<T: BadgeType> ScriptList<T> {
 		let mut deletions: Vec<String> = Vec::new();
 
 		for (name, editor) in self.scripts.iter_mut() {
-			if editor.marked_for_deletion {
+			if editor.deletion_state == ScriptEditorDeletionState::Marked {
 				if let Err(e) = editor.script.delete(&self.path) {
 					crate::toasts()
 						.error(format!("Couldn't delete script: {}", e))
@@ -120,7 +120,7 @@ pub enum ScriptListError {}
 pub struct ScriptEditor<T> {
 	pub script: PocketPyScript,
 	pub state: ScriptEditorState,
-	marked_for_deletion: bool,
+	pub deletion_state: ScriptEditorDeletionState,
 	_t: std::marker::PhantomData<T>,
 }
 
@@ -128,6 +128,13 @@ pub struct ScriptEditor<T> {
 pub enum ScriptEditorState {
 	EditMode(PocketPyScript),
 	DisplayMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScriptEditorDeletionState {
+	None,
+	Pending,
+	Marked,
 }
 
 impl ScriptEditorState {
@@ -159,10 +166,6 @@ impl<T: BadgeType> ScriptEditor<T> {
 		}
 
 		Ok(())
-	}
-
-	pub fn delete(&mut self) {
-		self.marked_for_deletion = true;
 	}
 
 	pub fn widget(&mut self) -> ScriptWidget<T> {
