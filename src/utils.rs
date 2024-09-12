@@ -61,3 +61,14 @@ macro_rules! toast_success {
 		crate::toast_success!($fmt,)
 	}
 }
+
+#[macro_export]
+macro_rules! handle_toast_error {
+	($fmt: expr, $e: expr) => {
+		{
+			if let Err(e) = $e {
+				crate::toast_error!($fmt, e);
+			}
+		}
+	};
+}

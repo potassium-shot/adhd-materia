@@ -127,6 +127,14 @@ impl FromStr for Tag {
 }
 
 impl Tag {
+	pub fn new(name: String, value: Option<TagValue>) -> Self {
+		Self {
+			name,
+			value,
+			editing_text: None,
+		}
+	}
+
 	fn parse(chars: &mut TagStringChars) -> Result<Self, TagError> {
 		let first_char = chars.next().ok_or(TagError::EmptyTag)?;
 		let mut name = String::new();
@@ -417,8 +425,12 @@ impl TagValue {
 	pub fn nested_block_count(&self) -> i32 {
 		match self {
 			Self::Tag(t) => t.nested_block_count(),
-			Self::List(list) => list.iter().fold(0, |acc, el| { i32::max(acc, el.nested_block_count()) }),
-			Self::Dictionary(dict) => dict.values().fold(0, |acc, el| { i32::max(acc, el.nested_block_count()) }),
+			Self::List(list) => list
+				.iter()
+				.fold(0, |acc, el| i32::max(acc, el.nested_block_count())),
+			Self::Dictionary(dict) => dict
+				.values()
+				.fold(0, |acc, el| i32::max(acc, el.nested_block_count())),
 			_ => 1,
 		}
 	}

@@ -4,6 +4,7 @@ use eframe::{App, CreationContext};
 
 use crate::{
 	data_dir::DataDirError,
+	handle_toast_error,
 	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
 	scripts::{
 		badge::{BadgeList, BadgeType},
@@ -332,6 +333,12 @@ impl App for AdhdMateriaApp {
 
 		while let Some(script) = script_waitlist.pop_front() {
 			crate::scripts::run_standalone_script(script.as_str())
+		}
+
+		while let Some(new_task) = crate::scripts::new_tasks_waitlist_next() {
+			if let Ok(task_list) = self.task_list.as_mut() {
+				handle_toast_error!("Script couldn't add task: {}", task_list.add_task(new_task));
+			}
 		}
 
 		crate::toasts().show(ctx);

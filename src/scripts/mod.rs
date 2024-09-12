@@ -21,6 +21,8 @@ pub mod standalone_script;
 pub mod ui;
 pub mod value;
 
+pub use py_bindings::new_tasks_waitlist_next;
+
 static POCKETPY_LOCK: Mutex<Mutex<()>> = Mutex::new(Mutex::new(()));
 
 #[allow(unused_macros)]
@@ -153,7 +155,8 @@ impl PocketPyScript {
 				py_pushnil();
 
 				for arg_i in 0..argc {
-					args[arg_i][call_i].push_pocketpy_value();
+					py_pushnil();
+					args[arg_i][call_i].into_pocketpy_value(py_peek(-1));
 				}
 
 				if !py_vectorcall(argc as u16, 0) {
@@ -218,6 +221,12 @@ pub enum PocketPyScriptError {
 		#[source]
 		&'static DataDirError,
 	),
+
+	#[error("Dictionary key for tag value should be a string")]
+	DictionaryKeyIsNotString,
+
+	#[error("The provided date is out of bounds")]
+	DateOutOfBounds,
 }
 
 #[cfg(test)]

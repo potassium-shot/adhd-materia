@@ -1,12 +1,34 @@
 #![allow(non_snake_case)]
 
 use std::{
+	collections::VecDeque,
 	ffi::{CStr, CString},
 	ptr::null_mut,
+	sync::Mutex,
 };
 
 use chrono::Datelike;
 use pocketpy_sys::*;
+
+use crate::{session::Session, task::Task};
+
+use super::{value::IntoPocketPyValue, PocketPyScriptError};
+
+static NEW_TASKS_WAITLIST: Mutex<VecDeque<Task>> = Mutex::new(VecDeque::new());
+
+pub fn new_tasks_waitlist_next() -> Option<Task> {
+	NEW_TASKS_WAITLIST.lock().unwrap().pop_front()
+}
+
+#[macro_export]
+macro_rules! spytvalue {
+	($name: ident) => {
+		let mut __temp_s_tvalue: [u8; 16] = std::mem::MaybeUninit::zeroed().assume_init();
+		let $name = __temp_s_tvalue
+			.as_mut_ptr()
+			.cast::<pocketpy_sys::py_TValue>();
+	};
+}
 
 pub unsafe fn initialize_bindings() {
 	// Create the Task python type
@@ -58,18 +80,53 @@ pub unsafe fn initialize_bindings() {
 		Some(date____str_____repr__),
 	);
 
+	// Create the Session type
+	let session_type = py_newtype(
+		c"Session".as_ptr(),
+		py_totype(py_getbuiltin(py_name(c"object".as_ptr()))),
+		null_mut(),
+		None,
+	);
+	py_setglobal(py_name(c"Session".as_ptr()), py_tpobject(session_type));
+	py_bindfunc(
+		py_tpobject(session_type),
+		c"get".as_ptr(),
+		Some(session__get),
+	);
+
 	let r0 = py_getreg(0);
 	py_newnativefunc(r0, Some(run_standalone_script));
 	py_setglobal(py_name(c"run_standalone_script".as_ptr()), r0);
+	py_newnativefunc(r0, Some(today));
+	py_setglobal(py_name(c"today".as_ptr()), r0);
+	py_newnativefunc(r0, Some(add_task));
+	py_setglobal(py_name(c"add_task".as_ptr()), r0);
 }
 
-unsafe extern "C" fn task____new__(_argc: std::os::raw::c_int, _argv: *mut py_TValue) -> bool {
+unsafe extern "C" fn task____new__(argc: std::os::raw::c_int, argv: *mut py_TValue) -> bool {
+	if argc != 2 {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected 1 argument".as_ptr(),
+		);
+	}
+
+	let r0 = py_getreg(0);
+	let name = ((argv as usize) + size_of::<usize>() * 2) as *mut py_TValue;
+
 	py_newobject(
 		py_retval(),
 		py_totype(py_getglobal(py_name(c"Task".as_ptr()))),
 		-1,
 		0,
 	);
+
+	py_setdict(py_retval(), py_name(c"name".as_ptr()), name);
+	py_newstr(r0, c"".as_ptr());
+	py_setdict(py_retval(), py_name(c"description".as_ptr()), r0);
+	py_newlist(r0);
+	py_setdict(py_retval(), py_name(c"tags".as_ptr()), r0);
 	true
 }
 
@@ -115,13 +172,52 @@ unsafe extern "C" fn task__has_tag_with_name(
 	}
 }
 
-unsafe extern "C" fn tag____new__(_argc: std::os::raw::c_int, _argv: *mut py_TValue) -> bool {
+unsafe extern "C" fn tag____new__(argc: std::os::raw::c_int, argv: *mut py_TValue) -> bool {
+	let (name, value) = match argc {
+		2 => {
+			let name = ((argv as usize) + size_of::<usize>() * 2) as *mut py_TValue;
+
+			if !py_istype(name, py_totype(py_getbuiltin(py_name(c"str".as_ptr())))) {
+				py_newnone(py_retval());
+				return py_exception(
+					py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+					c"Tag name should be a string".as_ptr(),
+				);
+			}
+
+			(name, py_None)
+		}
+		3 => {
+			let name = ((argv as usize) + size_of::<usize>() * 2) as *mut py_TValue;
+
+			if !py_istype(name, py_totype(py_getbuiltin(py_name(c"str".as_ptr())))) {
+				py_newnone(py_retval());
+				return py_exception(
+					py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+					c"Tag name should be a string".as_ptr(),
+				);
+			}
+
+			let value = ((argv as usize) + size_of::<usize>() * 4) as *mut py_TValue;
+			(name, value)
+		}
+		_ => {
+			py_newnone(py_retval());
+			return py_exception(
+				py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+				c"Expected 1 or 2 argument".as_ptr(),
+			);
+		}
+	};
+
 	py_newobject(
 		py_retval(),
 		py_totype(py_getglobal(py_name(c"Tag".as_ptr()))),
 		-1,
 		0,
 	);
+	py_setdict(py_retval(), py_name(c"name".as_ptr()), name);
+	py_setdict(py_retval(), py_name(c"value".as_ptr()), value);
 	true
 }
 
@@ -202,6 +298,19 @@ pub fn new_py_date_py_values(
 	}
 }
 
+pub fn naive_date_from_py_date(
+	value: *mut py_TValue,
+) -> Result<chrono::NaiveDate, PocketPyScriptError> {
+	unsafe {
+		chrono::NaiveDate::from_ymd_opt(
+			py_toint(py_getdict(value, py_name(c"year".as_ptr()))) as i32,
+			py_toint(py_getdict(value, py_name(c"month".as_ptr()))) as u32,
+			py_toint(py_getdict(value, py_name(c"day".as_ptr()))) as u32,
+		)
+		.ok_or(PocketPyScriptError::DateOutOfBounds)
+	}
+}
+
 pub fn new_py_date(out: *mut py_TValue, date: &chrono::NaiveDate) -> bool {
 	unsafe {
 		for (i, element) in [
@@ -244,5 +353,77 @@ unsafe extern "C" fn run_standalone_script(
 	crate::app::push_script_to_waitlist(name.to_string());
 
 	py_newnone(py_retval());
+	true
+}
+
+unsafe extern "C" fn today(_argc: std::os::raw::c_int, _argv: *mut py_TValue) -> bool {
+	new_py_date(py_retval(), &chrono::Local::now().date_naive());
+	true
+}
+
+unsafe extern "C" fn session__get(_argc: std::os::raw::c_int, _argv: *mut py_TValue) -> bool {
+	let session = Session::current();
+	let r0 = py_getreg(0);
+	let r1 = py_getreg(1);
+
+	py_newobject(
+		py_retval(),
+		py_totype(py_getglobal(py_name(c"Session".as_ptr()))),
+		-1,
+		0,
+	);
+
+	new_py_date(r0, &session.last_session);
+	py_setdict(py_retval(), py_name(c"last_session".as_ptr()), r0);
+
+	py_newlist(r0);
+	session.set_filters.iter().for_each(|s| {
+		let cstring = CString::new(s.as_str()).unwrap();
+		py_newstr(r1, cstring.as_ptr());
+		py_list_append(r0, r1);
+	});
+	py_setdict(py_retval(), py_name(c"set_filters".as_ptr()), r0);
+
+	py_newlist(r0);
+	session.set_sortings.iter().for_each(|s| {
+		let cstring = CString::new(s.as_str()).unwrap();
+		py_newstr(r1, cstring.as_ptr());
+		py_list_append(r0, r1);
+	});
+	py_setdict(py_retval(), py_name(c"set_sortings".as_ptr()), r0);
+
+	true
+}
+
+unsafe extern "C" fn add_task(argc: std::os::raw::c_int, argv: *mut py_TValue) -> bool {
+	if argc != 1 {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected 1 argument".as_ptr(),
+		);
+	}
+
+	if !py_istype(argv, py_totype(py_getglobal(py_name(c"Task".as_ptr())))) {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected Task argument".as_ptr(),
+		);
+	}
+
+	match Task::from_pocketpy_value_ptr(argv) {
+		Ok(task) => {
+			NEW_TASKS_WAITLIST.lock().unwrap().push_back(task);
+		}
+		Err(e) => {
+			py_newnone(py_retval());
+			let err_cstring = CString::new(e.to_string()).unwrap();
+			return py_exception(
+				py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+				err_cstring.as_ptr(),
+			);
+		}
+	}
 	true
 }
