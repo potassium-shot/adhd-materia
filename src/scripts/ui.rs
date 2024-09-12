@@ -1,6 +1,9 @@
 use crate::{settings::Settings, toast_error};
 
-use super::{badge::BadgeType, list::ScriptEditor};
+use super::{
+	badge::BadgeType,
+	list::{ScriptEditor, ScriptEditorStateKind},
+};
 
 pub struct ScriptWidget<'script, T> {
 	pub(super) script: &'script mut ScriptEditor<T>,
@@ -54,6 +57,12 @@ impl<'script, T: BadgeType> ScriptWidget<'script, T> {
 								{
 									mark_for_delete = true;
 								}
+
+								T::draw_ui_titlebar(
+									ui,
+									ScriptEditorStateKind::EditMode,
+									&mut self.script.script,
+								);
 							});
 
 							ui.with_layout(
@@ -84,7 +93,14 @@ impl<'script, T: BadgeType> ScriptWidget<'script, T> {
 								{
 									self.script.edit();
 								}
+
+								T::draw_ui_titlebar(
+									ui,
+									ScriptEditorStateKind::DisplayMode,
+									&mut self.script.script,
+								);
 							});
+
 							ui.separator();
 							ui.add_space(8.0);
 

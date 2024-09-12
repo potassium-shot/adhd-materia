@@ -7,6 +7,7 @@ pub struct DataDir {
 	settings_file: PathBuf,
 	filter_scripts_dir: PathBuf,
 	sorting_scripts_dir: PathBuf,
+	standalone_scripts_dir: PathBuf,
 }
 
 impl DataDir {
@@ -22,11 +23,13 @@ impl DataDir {
 		let settings_file = dir.join("settings.ron");
 		let filter_scripts_dir = dir.join("filter_scripts");
 		let sorting_scripts_dir = dir.join("sorting_scripts");
+		let standalone_scripts_dir = dir.join("standalone_scripts");
 
 		std::fs::create_dir_all(&tasks_dir)?;
 		std::fs::create_dir_all(&scheduled_dir)?;
 		std::fs::create_dir_all(&filter_scripts_dir)?;
 		std::fs::create_dir_all(&sorting_scripts_dir)?;
+		std::fs::create_dir_all(&standalone_scripts_dir)?;
 
 		Ok(Self {
 			tasks_dir,
@@ -35,6 +38,7 @@ impl DataDir {
 			settings_file,
 			filter_scripts_dir,
 			sorting_scripts_dir,
+			standalone_scripts_dir,
 		})
 	}
 
@@ -60,6 +64,10 @@ impl DataDir {
 
 	pub fn sorting_scripts(&self) -> &Path {
 		self.sorting_scripts_dir.as_path()
+	}
+
+	pub fn standalone_scripts(&self) -> &Path {
+		self.standalone_scripts_dir.as_path()
 	}
 }
 

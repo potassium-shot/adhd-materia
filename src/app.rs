@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::VecDeque, sync::Mutex, time::Duration};
 
 use eframe::{App, CreationContext};
 
@@ -26,6 +26,12 @@ static mut SCRIPT_LOCK: Option<crate::scripts::PocketPyLock> = None;
 
 pub fn script_lock() -> crate::scripts::PocketPyLockGuard<'static> {
 	unsafe { SCRIPT_LOCK.as_ref().unwrap() }.lock()
+}
+
+static SCRIPTS_WAITLIST: Mutex<VecDeque<String>> = Mutex::new(VecDeque::new());
+
+pub fn push_script_to_waitlist(script_name: String) {
+	SCRIPTS_WAITLIST.lock().unwrap().push_back(script_name);
 }
 
 pub struct AdhdMateriaApp {
@@ -320,6 +326,12 @@ impl App for AdhdMateriaApp {
 					.expect("task display list is some"),
 				self.sorting_list.as_ref().expect("task display is some"),
 			));
+		}
+
+		let mut script_waitlist = SCRIPTS_WAITLIST.lock().unwrap();
+
+		while let Some(script) = script_waitlist.pop_front() {
+			crate::scripts::run_standalone_script(script.as_str())
 		}
 
 		crate::toasts().show(ctx);

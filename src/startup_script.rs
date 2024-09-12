@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use crate::{
+	scripts::{badge::BadgeType, standalone_script::StandaloneScriptBadgeType, PocketPyScript},
 	session::{Session, SessionError},
 	settings::Settings,
 	tag::Tag,
@@ -9,12 +10,24 @@ use crate::{
 		scheduled::{RepeatMode, ScheduledTask},
 		NormalTaskData, TaskError, TaskPath,
 	},
+	toast_error,
 };
 
 pub struct StartupScript;
 
 impl StartupScript {
 	pub fn run() -> Result<Vec<TaskError>, StartupError> {
+		// Run autorun script
+		if let Ok(path) = StandaloneScriptBadgeType::get_path() {
+			if let Ok(script) = PocketPyScript::load(path.join("autorun.py")) {
+				if let Err(e) = script.execute_function::<()>(crate::app::script_lock(), "run", [])
+				{
+					toast_error!("Error running autorun script: {}", e);
+				}
+			}
+		}
+
+		// Evaluate scheduled tasks
 		let (mut scheduled_task_list, mut errors) =
 			TaskList::<ScheduledTask>::new(TaskPath::Scheduled)?;
 		let (mut task_list, _) = TaskList::<NormalTaskData>::new(TaskPath::Tasks)?;

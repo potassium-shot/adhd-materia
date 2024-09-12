@@ -124,6 +124,7 @@ pub struct ScriptEditor<T> {
 	_t: std::marker::PhantomData<T>,
 }
 
+#[derive(kinded::Kinded)]
 pub enum ScriptEditorState {
 	EditMode(PocketPyScript),
 	DisplayMode,

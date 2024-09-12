@@ -8,6 +8,7 @@ use crate::{
 		filter::{FilterBadgeType, DEFAULT_FILTER_SCRIPT},
 		list::ScriptList,
 		sorting::{SortingBadgeType, DEFAULT_SORTING_SCRIPT},
+		standalone_script::{StandaloneScriptBadgeType, DEFAULT_STANDALONE_SCRIPT},
 		PocketPyScript,
 	},
 	settings::{self, AdhdMateriaTheme, Settings, DEFAULT_SCHEDULED_TASK_TAG},
@@ -50,7 +51,9 @@ pub enum SidePanel {
 	SortingScripts {
 		script_list: Result<ScriptList<SortingBadgeType>, &'static DataDirError>,
 	},
-	Scripts {},
+	Scripts {
+		script_list: Result<ScriptList<StandaloneScriptBadgeType>, &'static DataDirError>,
+	},
 	Settings,
 }
 
@@ -167,12 +170,8 @@ impl SidePanel {
 			Self::SortingScripts { script_list } => {
 				show_scripts(ui, script_list, "Sorting", &DEFAULT_SORTING_SCRIPT);
 			}
-			Self::Scripts {} => {
-				ui.heading("Scripts");
-				ui.separator();
-				ui.add_space(16.0);
-
-				ui.label("Dinosaur haha");
+			Self::Scripts { script_list } => {
+				show_scripts(ui, script_list, "Standalone", &DEFAULT_STANDALONE_SCRIPT);
 			}
 			Self::Settings => {
 				ui.heading("Settings");
@@ -357,7 +356,7 @@ impl SidePanel {
 			}
 			SidePanelKind::FilterScripts => open_scripts!(FilterBadgeType, FilterScripts),
 			SidePanelKind::SortingScripts => open_scripts!(SortingBadgeType, SortingScripts),
-			SidePanelKind::Scripts => Self::Scripts {},
+			SidePanelKind::Scripts => open_scripts!(StandaloneScriptBadgeType, Scripts),
 			SidePanelKind::Settings => Self::Settings,
 			SidePanelKind::Hidden => Self::Hidden,
 		}
@@ -380,7 +379,9 @@ impl SidePanel {
 			SidePanel::SortingScripts { script_list } => {
 				close_scripts(script_list, "Sorting");
 			}
-			SidePanel::Scripts {} => {}
+			SidePanel::Scripts { script_list } => {
+				close_scripts(script_list, "Standalone");
+			}
 			SidePanel::Settings => {
 				let mut settings = Settings::get();
 				settings.default_task.apply_tags();
@@ -453,7 +454,10 @@ fn show_scripts<T: BadgeType>(
 	}
 }
 
-fn close_scripts<T: BadgeType>(script_list: &mut Result<ScriptList<T>, &DataDirError>, script_name: &'static str) {
+fn close_scripts<T: BadgeType>(
+	script_list: &mut Result<ScriptList<T>, &DataDirError>,
+	script_name: &'static str,
+) {
 	if let Ok(list) = script_list {
 		list.save_all().into_iter().for_each(|e| {
 			toast_error!("Couldn't save {} script: {}", script_name, e);

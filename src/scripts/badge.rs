@@ -8,7 +8,10 @@ use crate::{
 	toast_error,
 };
 
-use super::list::{ScriptEditor, ScriptList};
+use super::{
+	list::{ScriptEditor, ScriptEditorStateKind, ScriptList},
+	PocketPyScript,
+};
 
 static BADGES_COLOR_HASH: LazyLock<colorhash::ColorHash> =
 	LazyLock::new(|| colorhash::ColorHash::new());
@@ -96,6 +99,16 @@ pub trait BadgeType {
 
 	fn get_session_badge_list(session: &Session) -> &Vec<String>;
 	fn get_session_badge_list_mut(session: &mut Session) -> &mut Vec<String>;
+
+	#[allow(unused_variables)]
+	fn draw_ui_titlebar(
+		ui: &mut egui::Ui,
+		state: ScriptEditorStateKind,
+		script: &mut PocketPyScript,
+	) where
+		Self: Sized,
+	{
+	}
 }
 
 pub struct BadgeList<T> {
@@ -108,16 +121,16 @@ pub struct BadgeList<T> {
 impl<T: BadgeType> BadgeList<T> {
 	pub fn new() -> Result<Self, &'static DataDirError> {
 		let set: Vec<String> = T::get_session_badge_list(&Session::current())
-				.iter()
-				.filter(|badge| {
-					if let Ok(path) = T::get_path() {
-						path.join(badge).with_extension("py").exists()
-					} else {
-						false
-					}
-				})
-				.cloned()
-				.collect();
+			.iter()
+			.filter(|badge| {
+				if let Ok(path) = T::get_path() {
+					path.join(badge).with_extension("py").exists()
+				} else {
+					false
+				}
+			})
+			.cloned()
+			.collect();
 
 		Ok(Self {
 			unset: ScriptList::new()?

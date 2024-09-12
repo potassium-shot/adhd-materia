@@ -1,6 +1,9 @@
 #![allow(non_snake_case)]
 
-use std::{ffi::CString, ptr::null_mut};
+use std::{
+	ffi::{CStr, CString},
+	ptr::null_mut,
+};
 
 use chrono::Datelike;
 use pocketpy_sys::*;
@@ -54,6 +57,10 @@ pub unsafe fn initialize_bindings() {
 		c"__repr__".as_ptr(),
 		Some(date____str_____repr__),
 	);
+
+	let r0 = py_getreg(0);
+	py_newnativefunc(r0, Some(run_standalone_script));
+	py_setglobal(py_name(c"run_standalone_script".as_ptr()), r0);
 }
 
 unsafe extern "C" fn task____new__(_argc: std::os::raw::c_int, _argv: *mut py_TValue) -> bool {
@@ -210,4 +217,32 @@ pub fn new_py_date(out: *mut py_TValue, date: &chrono::NaiveDate) -> bool {
 
 		new_py_date_py_values(out, py_getreg(5), py_getreg(6), py_getreg(7))
 	}
+}
+
+unsafe extern "C" fn run_standalone_script(
+	argc: std::os::raw::c_int,
+	argv: *mut py_TValue,
+) -> bool {
+	if argc != 1 {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected 1 argument".as_ptr(),
+		);
+	}
+
+	if !py_istype(argv, py_totype(py_getbuiltin(py_name(c"str".as_ptr())))) {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected string argument".as_ptr(),
+		);
+	}
+
+	let name = CStr::from_ptr(py_tostr(argv)).to_string_lossy();
+
+	crate::app::push_script_to_waitlist(name.to_string());
+
+	py_newnone(py_retval());
+	true
 }

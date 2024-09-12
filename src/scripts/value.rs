@@ -26,6 +26,29 @@ pub trait IntoPocketPyValue {
 
 pub type AnyIntoPocketPyValue = Box<dyn IntoPocketPyValue>;
 
+impl IntoPocketPyValue for () {
+	fn push_pocketpy_value(&self) {
+		unsafe {
+			let r0 = py_getreg(0);
+			py_newnone(r0);
+			py_push(r0);
+		}
+	}
+
+	fn from_pocketpy_value_ptr(value: *mut py_TValue) -> Result<Self, PocketPyScriptError>
+	where
+		Self: Sized,
+	{
+		unsafe {
+			if py_isidentical(value, py_None) {
+				Ok(())
+			} else {
+				Err(PocketPyScriptError::WrongType)
+			}
+		}
+	}
+}
+
 impl IntoPocketPyValue for i64 {
 	fn push_pocketpy_value(&self) {
 		unsafe {

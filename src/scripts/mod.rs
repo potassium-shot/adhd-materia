@@ -4,8 +4,10 @@ use std::{
 	sync::{Mutex, MutexGuard},
 };
 
+use badge::BadgeType;
 use pocketpy_sys::*;
 
+use standalone_script::StandaloneScriptBadgeType;
 use value::{AnyIntoPocketPyValue, IntoPocketPyValue};
 
 use crate::data_dir::DataDirError;
@@ -15,6 +17,7 @@ pub mod filter;
 pub mod list;
 mod py_bindings;
 pub mod sorting;
+pub mod standalone_script;
 pub mod ui;
 pub mod value;
 
@@ -166,7 +169,6 @@ impl PocketPyScript {
 		}
 	}
 
-	#[allow(dead_code)]
 	pub fn execute_function<ReturnType: IntoPocketPyValue + 'static>(
 		&self,
 		lock: PocketPyLockGuard<'_>,
@@ -182,6 +184,16 @@ impl PocketPyScript {
 			)?
 			.pop()
 			.expect("Function should return at least one value"))
+	}
+}
+
+pub fn run_standalone_script(name: &str) {
+	if let Ok(path) = StandaloneScriptBadgeType::get_path() {
+		if let Ok(script) = PocketPyScript::load(path.join(name).with_extension("py")) {
+			if let Err(e) = script.execute_function::<()>(crate::app::script_lock(), "run", []) {
+				eprintln!("Error running script: {}", e);
+			}
+		}
 	}
 }
 
