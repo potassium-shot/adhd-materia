@@ -35,12 +35,29 @@ impl<'tag> TagWidget<'tag> {
 	}
 }
 
-impl egui::Widget for TagWidget<'_> {
-	fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+pub enum TagSwapRequest {
+	Forward,
+	Backward,
+}
+
+impl TagWidget<'_> {
+	pub fn show(self, ui: &mut egui::Ui) -> Option<TagSwapRequest> {
 		if self.edit_mode {
-			ui.add(egui::TextEdit::singleline(self.tag.get_editing_text()).code_editor())
+			let mut swap_req = None;
+
+			if ui.add(egui::Button::new("◀").frame(false)).clicked() {
+				swap_req = Some(TagSwapRequest::Backward);
+			}
+
+			ui.add(egui::TextEdit::singleline(self.tag.get_editing_text()).code_editor());
+
+			if ui.add(egui::Button::new("▶").frame(false)).clicked() {
+				swap_req = Some(TagSwapRequest::Forward);
+			}
+
+			swap_req
 		} else {
-			let (rect, resp) = ui.allocate_at_least(
+			let (rect, _) = ui.allocate_at_least(
 				egui::Vec2::new(1.0, (19 + 12 * self.tag.nested_block_count()) as f32),
 				egui::Sense::hover(),
 			);
@@ -51,7 +68,7 @@ impl egui::Widget for TagWidget<'_> {
 				});
 			});
 
-			resp
+			None
 		}
 	}
 }

@@ -179,7 +179,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 
 							ui.horizontal_wrapped(|ui| {
 								for tag in self.task.tags.iter_mut() {
-									ui.add(tag.widget(false));
+									tag.widget(false).show(ui);
 									ui.add_space(8.0);
 								}
 							});
@@ -229,9 +229,18 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 
 						ui.horizontal_wrapped(|ui| {
 							let mut tags_to_remove = Vec::new();
+							let mut tags_to_swap = None;
 
 							for (i, tag) in self.task.tags.iter_mut().enumerate() {
-								ui.add(tag.widget(true));
+								if let Some(swap_dir) = tag.widget(true).show(ui) {
+									tags_to_swap = Some((
+										i as isize,
+										match swap_dir {
+											crate::tag::TagSwapRequest::Forward => (i as isize) + 1,
+											crate::tag::TagSwapRequest::Backward => (i as isize) - 1,
+										},
+									));
+								}
 
 								if ui
 									.button(
@@ -244,6 +253,12 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 								}
 
 								ui.add_space(8.0);
+							}
+
+							if let Some((a, b)) = tags_to_swap {
+								let a = a.clamp(0, self.task.tags.len() as isize - 1) as usize;
+								let b = b.clamp(0, self.task.tags.len() as isize - 1) as usize;
+								self.task.tags.swap(a, b);
 							}
 
 							for i in tags_to_remove.into_iter().rev() {

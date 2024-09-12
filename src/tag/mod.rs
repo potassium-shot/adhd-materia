@@ -8,6 +8,8 @@ use ui::TagWidget;
 
 mod ui;
 
+pub use ui::TagSwapRequest;
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Tag {
 	pub name: String,
