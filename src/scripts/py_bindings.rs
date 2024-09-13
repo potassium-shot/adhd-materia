@@ -89,6 +89,7 @@ pub unsafe fn initialize_bindings() {
 	);
 	py_setglobal(py_name(c"TaskRef".as_ptr()), py_tpobject(task_ref_type));
 	py_bindmethod(task_ref_type, c"__new__".as_ptr(), Some(task_ref____new__));
+	py_bindmethod(task_ref_type, c"__eq__".as_ptr(), Some(task_ref____eq__));
 	py_bindmethod(task_ref_type, c"__str__".as_ptr(), Some(task_ref____str__));
 	py_bindmethod(
 		task_ref_type,
@@ -110,7 +111,7 @@ pub unsafe fn initialize_bindings() {
 		Some(session__get),
 	);
 
-	let r0 = py_getreg(0);
+	spytvalue!(r0);
 	py_newnativefunc(r0, Some(run_standalone_script));
 	py_setglobal(py_name(c"run_standalone_script".as_ptr()), r0);
 	py_newnativefunc(r0, Some(today));
@@ -128,7 +129,7 @@ unsafe extern "C" fn task____new__(argc: std::os::raw::c_int, argv: *mut py_TVal
 		);
 	}
 
-	let r0 = py_getreg(0);
+	spytvalue!(r0);
 	let name = ((argv as usize) + size_of::<usize>() * 2) as *mut py_TValue;
 
 	py_newobject(
@@ -373,6 +374,25 @@ unsafe extern "C" fn task_ref____new__(argc: std::os::raw::c_int, argv: *mut py_
 	true
 }
 
+unsafe extern "C" fn task_ref____eq__(argc: std::os::raw::c_int, argv: *mut py_TValue) -> bool {
+	if argc != 2 {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected 2 argument".as_ptr(),
+		);
+	}
+
+	let arg2 = ((argv as usize) + size_of::<usize>() * 2) as *mut py_TValue;
+
+	py_newbool(
+		py_retval(),
+		py_typeof(argv) == py_typeof(arg2)
+			&& py_equal(py_getslot(argv, 0), py_getslot(arg2, 0)) == 1,
+	);
+	true
+}
+
 unsafe extern "C" fn task_ref____str__(argc: std::os::raw::c_int, argv: *mut py_TValue) -> bool {
 	if argc != 1 {
 		py_newnone(py_retval());
@@ -438,8 +458,8 @@ unsafe extern "C" fn today(_argc: std::os::raw::c_int, _argv: *mut py_TValue) ->
 
 unsafe extern "C" fn session__get(_argc: std::os::raw::c_int, _argv: *mut py_TValue) -> bool {
 	let session = Session::current();
-	let r0 = py_getreg(0);
-	let r1 = py_getreg(1);
+	spytvalue!(r0);
+	spytvalue!(r1);
 
 	py_newobject(
 		py_retval(),

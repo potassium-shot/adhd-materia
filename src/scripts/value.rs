@@ -280,15 +280,7 @@ impl IntoPocketPyValue for TagValue {
 					t.into_pocketpy_value(out);
 				}
 				TagValue::TaskReference(u) => {
-					let cstring = CString::new(u.to_string()).unwrap(); // todo! change to new task ref type
-					py_newobject(
-						out,
-						py_totype(py_getglobal(py_name(c"TaskRef".as_ptr()))),
-						1,
-						0,
-					);
-					py_newstr(r0, cstring.as_ptr());
-					py_setslot(out, 0, r0);
+					u.into_pocketpy_value(out);
 				}
 			}
 		}
@@ -368,14 +360,39 @@ impl IntoPocketPyValue for TagValue {
 			} else if py_istype(value, py_totype(py_getglobal(py_name(c"Tag".as_ptr())))) {
 				Ok(Self::Tag(Box::new(Tag::from_pocketpy_value_ptr(value)?)))
 			} else if py_istype(value, py_totype(py_getglobal(py_name(c"TaskRef".as_ptr())))) {
-				Ok(Self::TaskReference(
-					CStr::from_ptr(py_tostr(py_getslot(value, 0)))
-						.to_string_lossy()
-						.parse::<Uuid>()?,
-				))
+				Ok(Self::TaskReference(Uuid::from_pocketpy_value_ptr(value)?))
 			} else {
 				Err(PocketPyScriptError::WrongType)
 			}
+		}
+	}
+}
+
+impl IntoPocketPyValue for Uuid {
+	fn into_pocketpy_value(&self, out: *mut py_TValue) {
+		unsafe {
+			spytvalue!(r0);
+
+			let cstring = CString::new(self.to_string()).unwrap();
+			py_newobject(
+				out,
+				py_totype(py_getglobal(py_name(c"TaskRef".as_ptr()))),
+				1,
+				0,
+			);
+			py_newstr(r0, cstring.as_ptr());
+			py_setslot(out, 0, r0);
+		}
+	}
+
+	fn from_pocketpy_value_ptr(value: *mut py_TValue) -> Result<Self, PocketPyScriptError>
+	where
+		Self: Sized,
+	{
+		unsafe {
+			Ok(CStr::from_ptr(py_tostr(py_getslot(value, 0)))
+				.to_string_lossy()
+				.parse::<Uuid>()?)
 		}
 	}
 }

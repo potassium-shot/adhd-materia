@@ -13,7 +13,12 @@ pub struct TaskDisplayList {
 }
 
 impl TaskDisplayList {
-	pub fn new(task_list: &TaskList, filter_list: &FilterList, sorting_list: &SortingList) -> Self {
+	pub fn new(
+		task_list: &TaskList,
+		filter_list: &FilterList,
+		sorting_list: &SortingList,
+		parent_task: Option<Uuid>,
+	) -> Self {
 		let task_list: Vec<&Task> = task_list.tasks().collect();
 		let mut task_passes = vec![true; task_list.len()];
 		let mut task_orderings: Vec<Vec<i64>> = Vec::new();
@@ -30,13 +35,32 @@ impl TaskDisplayList {
 						Ok(script) => match script.execute_function_for::<bool>(
 							crate::app::script_lock(),
 							script.name.as_str(),
-							[(
-								"task",
-								task_list
-									.iter()
-									.map(|task| Box::new((*task).clone()) as AnyIntoPocketPyValue)
-									.collect(),
-							)],
+							[
+								(
+									"task",
+									task_list
+										.iter()
+										.map(|task| {
+											Box::new((*task).clone()) as AnyIntoPocketPyValue
+										})
+										.collect(),
+								),
+								(
+									"parent",
+									match parent_task {
+										Some(parent_task) => std::iter::once(parent_task)
+											.cycle()
+											.take(task_list.len())
+											.map(|u| Box::new(u) as AnyIntoPocketPyValue)
+											.collect(),
+										_ => std::iter::once(())
+											.cycle()
+											.take(task_list.len())
+											.map(|none| Box::new(none) as AnyIntoPocketPyValue)
+											.collect(),
+									},
+								),
+							],
 						) {
 							Ok(passes) => Some(passes),
 							Err(e) => {

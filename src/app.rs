@@ -47,12 +47,23 @@ pub struct AdhdMateriaApp {
 	task_name_cache: HashMap<Uuid, String>,
 	side_panel: SidePanel,
 
-	selected_task: Option<Uuid>,
+	selected_task: Option<SelectedTask>,
 
 	interactable: bool,
 
 	filter_list: Result<FilterList, &'static DataDirError>,
 	sorting_list: Result<SortingList, &'static DataDirError>,
+}
+
+struct SelectedTask {
+	uuid: Uuid,
+	display_list: TaskDisplayList,
+}
+
+impl SelectedTask {
+	fn new(uuid: Uuid, task_list: &TaskList, filter_list: &FilterList, sorting_list: &SortingList) -> Self {
+		Self { uuid, display_list: TaskDisplayList::new(task_list, filter_list, sorting_list, Some(uuid)) }
+	}
 }
 
 impl AdhdMateriaApp {
@@ -124,7 +135,7 @@ impl AdhdMateriaApp {
 					Some((task_list, filter_list, sorting_list.as_ref().ok()?))
 				})
 				.map(|(task_list, filter_list, sorting_list)| {
-					TaskDisplayList::new(task_list, filter_list, sorting_list)
+					TaskDisplayList::new(task_list, filter_list, sorting_list, None)
 				}),
 			task_list: task_list.map(|(list, _)| list),
 			task_name_cache: HashMap::new(),
@@ -207,22 +218,28 @@ impl App for AdhdMateriaApp {
 				.as_mut()
 				.is_ok_and(|sorting_list| sorting_list.check_changed());
 
-		if let Ok(task_list) = self.task_list.as_mut() {
+			let task_list = self.task_list.as_mut().expect("display list is some");
+
 			egui::SidePanel::right("right_panel")
 				.min_width(384.0)
 				.default_width(576.0)
 				.show_animated(ctx, self.selected_task.is_some(), |ui| {
-					let selected_task_id = self.selected_task.expect("is some").clone();
+					let selected_task_id = self.selected_task.as_ref().expect("is some").uuid.clone();
 					let selected_task = task_list
 						.get_mut(&selected_task_id)
 						.expect("selected id should be valid");
 
 					ui.horizontal(|ui| {
 						ui.heading(selected_task.name.as_str());
-						if ui.button("⮪").clicked() {
+						if ui.button("➡").clicked() {
 							self.selected_task = None;
 						}
 					});
+
+					if self.selected_task.is_none() {
+						return;
+					}
+
 					ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
 						if ui.small_button("📋").clicked() {
 							ui.output_mut(|o| {
@@ -252,7 +269,6 @@ impl App for AdhdMateriaApp {
 						}
 					});
 
-					ui.add_space(8.0);
 					ui.separator();
 					ui.add_space(8.0);
 
@@ -265,7 +281,10 @@ impl App for AdhdMateriaApp {
 									.spacing((40.0, 12.0))
 									.striped(true)
 									.show(ui, |ui| {
-										for task in task_list.tasks_mut() {
+										let mut to_select = None;
+
+										for task_id in self.selected_task.as_ref().unwrap().display_list.tasks() {
+											let task = task_list.get_mut(task_id).expect("task display list should only have valid uuids");
 											if task.is_subtask_of(&selected_task_id) {
 												let task_widget_response =
 													task.widget().show(ui, &self.task_name_cache);
@@ -273,17 +292,25 @@ impl App for AdhdMateriaApp {
 												update_required |= task_widget_response.changed;
 
 												if task_widget_response.selected {
-													if self.selected_task == Some(*task.get_uuid())
-													{
-														self.selected_task = None;
-													} else {
-														self.selected_task =
-															Some(task.get_uuid().clone());
+													if let Ok(filter_list) = self.filter_list.as_ref() {
+														if let Ok(sorting_list) = self.sorting_list.as_ref() {
+															if self.selected_task.as_ref().is_some_and(|s| s.uuid == *task_id)
+															{
+																to_select = Some(None);
+															} else {
+																to_select =
+																	Some(Some(SelectedTask::new(task_id.clone(), task_list, filter_list, sorting_list)));
+															}
+														}
 													}
 												}
 
 												ui.end_row();
 											}
+										}
+
+										if let Some(to_select) = to_select {
+											self.selected_task = to_select;
 										}
 									});
 
@@ -307,7 +334,6 @@ impl App for AdhdMateriaApp {
 							});
 					});
 				});
-		}
 
 		egui::CentralPanel::default().show(ctx, |ui| {
 			ui.heading("Task List");
@@ -357,14 +383,6 @@ impl App for AdhdMateriaApp {
 											let task_widget_response = task.widget().show(ui, &self.task_name_cache);
 											update_required |= task_widget_response.changed;
 
-											if task_widget_response.selected {
-												if self.selected_task == Some(*task_id) {
-													self.selected_task = None;
-												} else {
-													self.selected_task = Some(task_id.clone());
-												}
-											}
-
 											ui.end_row();
 
 											if task.is_pending_delete() {
@@ -387,6 +405,20 @@ impl App for AdhdMateriaApp {
 											if clear_done && task.is_done() {
 												task.mark_for_delete();
 												done_cleared += 1;
+											}
+
+											if task_widget_response.selected {
+												if let Ok(filter_list) = self.filter_list.as_ref() {
+													if let Ok(sorting_list) = self.sorting_list.as_ref() {
+														if self.selected_task.as_ref().is_some_and(|s| s.uuid == *task_id)
+														{
+															self.selected_task = None;
+														} else {
+															self.selected_task =
+																Some(SelectedTask::new(task_id.clone(), task_list, filter_list, sorting_list));
+														}
+													}
+												}
 											}
 										}
 									});
@@ -435,10 +467,10 @@ impl App for AdhdMateriaApp {
 			});
 
 			if clear_done {
-				if let Some(selected_task) = self.selected_task {
+				if let Some(selected_task) = self.selected_task.as_ref() {
 					if let Ok(task_list) = self.task_list.as_mut() {
 						for task in task_list.tasks_mut() {
-							if task.is_subtask_of(&selected_task) && task.is_done() {
+							if task.is_subtask_of(&selected_task.uuid) && task.is_done() {
 								task.mark_for_delete();
 								done_cleared += 1;
 							}
@@ -463,7 +495,17 @@ impl App for AdhdMateriaApp {
 						.as_ref()
 						.expect("task display list is some"),
 					self.sorting_list.as_ref().expect("task display is some"),
-				));
+				None));
+			}
+
+			if let Some(selected_task) = self.selected_task.as_mut() {
+				selected_task.display_list = TaskDisplayList::new(
+					self.task_list.as_ref().expect("task display list is some"),
+					self.filter_list
+						.as_ref()
+						.expect("task display list is some"),
+					self.sorting_list.as_ref().expect("task display is some"),
+				Some(selected_task.uuid.clone()));
 			}
 
 			if let Ok(task_list) = self.task_list.as_ref() {
