@@ -356,7 +356,7 @@ impl TagValue {
 					.clone()
 					.chars
 					.try_fold(String::from(first_char), |mut acc, c| match c {
-						'a'..='z' => {
+						'a'..='z' | '0'..='9' | '_' | '-' => {
 							acc.push(c);
 							Ok(acc)
 						}
@@ -365,13 +365,17 @@ impl TagValue {
 
 				let text = text.unwrap_or_else(|e| e);
 
-				let (result, boolean) = match text.as_str() {
-					"true" => (Ok(Self::Bool(true)), true),
-					"false" => (Ok(Self::Bool(false)), true),
-					_ => (Ok(Self::Tag(Box::new(Tag::parse(chars)?))), false),
+				let (result, not_consumed) = if let Ok(uuid) = text.parse::<Uuid>() {
+					(Ok(Self::TaskReference(uuid)), true)
+				} else {
+					match text.as_str() {
+						"true" => (Ok(Self::Bool(true)), true),
+						"false" => (Ok(Self::Bool(false)), true),
+						_ => (Ok(Self::Tag(Box::new(Tag::parse(chars)?))), false),
+					}
 				};
 
-				if boolean {
+				if not_consumed {
 					chars.next().expect("peek returned some");
 
 					for _ in 0..(text.len() - 1) {
