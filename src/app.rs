@@ -48,6 +48,7 @@ pub struct AdhdMateriaApp {
 	side_panel: SidePanel,
 
 	selected_task: Option<SelectedTask>,
+	scroll_to_task: Option<Uuid>,
 
 	interactable: bool,
 
@@ -142,6 +143,7 @@ impl AdhdMateriaApp {
 			side_panel: SidePanel::default(),
 
 			selected_task: None,
+			scroll_to_task: None,
 
 			interactable: true,
 
@@ -201,7 +203,7 @@ impl App for AdhdMateriaApp {
 			.min_width(192.0)
 			.default_width(384.0)
 			.show_animated(ctx, self.side_panel.is_shown(), |ui| {
-				self.side_panel.show(ui, &self.task_name_cache);
+				self.side_panel.show(ui, &self.task_name_cache, &mut self.scroll_to_task);
 			});
 
 		if left_panel_was_shown && !self.side_panel.is_shown() {
@@ -268,7 +270,7 @@ impl App for AdhdMateriaApp {
 
 					ui.horizontal_wrapped(|ui| {
 						for tag in selected_task.tags.iter_mut() {
-							tag.widget(false).show(ui, &self.task_name_cache);
+							tag.widget(false).show(ui, &self.task_name_cache, &mut self.scroll_to_task);
 							ui.add_space(8.0);
 						}
 					});
@@ -291,7 +293,7 @@ impl App for AdhdMateriaApp {
 											let task = task_list.get_mut(task_id).expect("task display list should only have valid uuids");
 											if task.is_subtask_of(&selected_task_id) {
 												let task_widget_response =
-													task.widget().show(ui, &self.task_name_cache, selected_task_id == *task_id);
+													task.widget().show(ui, &self.task_name_cache, selected_task_id == *task_id, &mut self.scroll_to_task);
 
 												update_required |= task_widget_response.changed;
 
@@ -374,6 +376,7 @@ impl App for AdhdMateriaApp {
 				self.interactable = true;
 
 				let selected_task = self.selected_task.as_ref().map(|s| s.uuid.clone());
+				let scroll_to = self.scroll_to_task.take();
 
 				match &mut self.task_list {
 					Ok(task_list) => {
@@ -386,7 +389,7 @@ impl App for AdhdMateriaApp {
 									.show(ui, |ui| {
 										for task_id in self.task_display_list.as_ref().expect("display list should be Some when task list is ok").tasks() {
 											let task = task_list.get_mut(task_id).expect("task display list should only have valid uuids");
-											let task_widget_response = task.widget().show(ui, &self.task_name_cache, selected_task == Some(*task_id));
+											let task_widget_response = task.widget().show(ui, &self.task_name_cache, selected_task == Some(*task_id), &mut self.scroll_to_task);
 											update_required |= task_widget_response.changed;
 
 											ui.end_row();
@@ -426,6 +429,10 @@ impl App for AdhdMateriaApp {
 													}
 												}
 											}
+
+											if scroll_to == Some(*task_id) {
+												ui.scroll_to_rect(task_widget_response.rect, Some(egui::Align::Center));
+											}
 										}
 									});
 
@@ -435,6 +442,7 @@ impl App for AdhdMateriaApp {
 									let mut new_task = Settings::get().default_task.clone();
 									new_task.new_uuid();
 									new_task.edit();
+									self.scroll_to_task = Some(new_task.get_uuid().clone());
 
 									if let Err(e) = task_list.add_task(new_task) {
 										crate::toasts()

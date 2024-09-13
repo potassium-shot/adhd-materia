@@ -17,6 +17,7 @@ use super::{
 pub struct TaskWidgetResponse {
 	pub changed: bool,
 	pub selected: bool,
+	pub rect: egui::Rect,
 }
 
 pub struct TaskWidget<'task, T> {
@@ -29,8 +30,9 @@ impl TaskWidget<'_, NormalTaskData> {
 		ui: &mut egui::Ui,
 		task_names: &HashMap<Uuid, String>,
 		selected: bool,
+		scroll_to: &mut Option<Uuid>,
 	) -> TaskWidgetResponse {
-		self.draw_task_widget(ui, TaskPath::Tasks, true, task_names, selected)
+		self.draw_task_widget(ui, TaskPath::Tasks, true, task_names, selected, scroll_to)
 	}
 }
 
@@ -45,6 +47,7 @@ impl TaskWidget<'_, ScheduledTask> {
 		mut self,
 		ui: &mut egui::Ui,
 		task_names: &HashMap<Uuid, String>,
+		scroll_to: &mut Option<Uuid>,
 	) -> TaskWidgetResponse {
 		let uuid = self.task.get_uuid().clone();
 
@@ -120,7 +123,7 @@ impl TaskWidget<'_, ScheduledTask> {
 							});
 						}
 					}
-					self.draw_task_widget(ui, TaskPath::Scheduled, false, task_names, false)
+					self.draw_task_widget(ui, TaskPath::Scheduled, false, task_names, false, scroll_to)
 				})
 				.inner
 			})
@@ -138,10 +141,12 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 		can_be_done: bool,
 		task_names: &HashMap<Uuid, String>,
 		selected: bool,
+		scroll_to: &mut Option<Uuid>,
 	) -> TaskWidgetResponse {
 		let mut response = TaskWidgetResponse {
 			changed: false,
 			selected: false,
+			rect: egui::Rect::ZERO,
 		};
 
 		ui.push_id(*self.task.get_uuid(), |ui| {
@@ -151,7 +156,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 				ui.set_opacity(0.5);
 			}
 
-			egui::Frame::group(ui.style())
+			response.rect = egui::Frame::group(ui.style())
 				.stroke(egui::Stroke::new(
 					ui.visuals().window_stroke.width,
 					if selected {
@@ -192,11 +197,15 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 								}
 
 								response.selected = ui
-									.button(egui::RichText::from(self.task.name.as_str()).heading().color(if selected {
-										ui.visuals().hyperlink_color
-									} else {
-										ui.visuals().text_color()
-									}))
+									.button(
+										egui::RichText::from(self.task.name.as_str())
+											.heading()
+											.color(if selected {
+												ui.visuals().hyperlink_color
+											} else {
+												ui.visuals().text_color()
+											}),
+									)
 									.clicked();
 
 								if ui
@@ -223,7 +232,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 
 								ui.horizontal_wrapped(|ui| {
 									for tag in self.task.tags.iter_mut() {
-										tag.widget(false).show(ui, task_names);
+										tag.widget(false).show(ui, task_names, scroll_to);
 										ui.add_space(8.0);
 									}
 								});
@@ -296,7 +305,9 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 								let mut tags_to_swap = None;
 
 								for (i, tag) in self.task.tags.iter_mut().enumerate() {
-									if let Some(swap_dir) = tag.widget(true).show(ui, task_names) {
+									if let Some(swap_dir) =
+										tag.widget(true).show(ui, task_names, scroll_to)
+									{
 										tags_to_swap = Some((
 											i as isize,
 											match swap_dir {
@@ -339,7 +350,9 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 							});
 						});
 					}
-				});
+				})
+				.response
+				.rect;
 
 			if let TaskState::Edit { pending_delete, .. } = &mut self.task.state {
 				*pending_delete |= set_pending_delete;

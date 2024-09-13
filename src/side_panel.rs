@@ -64,7 +64,12 @@ pub enum SidePanel {
 }
 
 impl SidePanel {
-	pub fn show(&mut self, ui: &mut egui::Ui, task_names: &HashMap<Uuid, String>) {
+	pub fn show(
+		&mut self,
+		ui: &mut egui::Ui,
+		task_names: &HashMap<Uuid, String>,
+		scroll_to: &mut Option<Uuid>,
+	) {
 		match self {
 			Self::Hidden => {}
 			Self::ScheduledTasks {
@@ -93,7 +98,7 @@ impl SidePanel {
 										.striped(true)
 										.show(ui, |ui| {
 											for task in task_list.tasks_mut() {
-												task.widget().show(ui, task_names);
+												task.widget().show(ui, task_names, scroll_to);
 												ui.end_row();
 
 												if task.is_pending_delete() {
@@ -266,7 +271,7 @@ impl SidePanel {
 						settings.default_task.edit_no_buttons();
 
 						ui.label("Default task");
-						settings.default_task.widget().show(ui, task_names, false);
+						settings.default_task.widget().show(ui, task_names, false, scroll_to);
 						ui.end_row();
 
 						ui.label("Repeating task rewind");

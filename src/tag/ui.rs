@@ -46,6 +46,7 @@ impl TagWidget<'_> {
 		self,
 		ui: &mut egui::Ui,
 		task_names: &HashMap<Uuid, String>,
+		scroll_to: &mut Option<Uuid>,
 	) -> Option<TagSwapRequest> {
 		if self.edit_mode {
 			let mut swap_req = None;
@@ -69,7 +70,7 @@ impl TagWidget<'_> {
 
 			ui.allocate_ui_at_rect(rect.with_max_x(ui.available_width()), |ui| {
 				ui.horizontal_centered(|ui| {
-					Self::draw_tag(ui, &self.tag, task_names);
+					Self::draw_tag(ui, &self.tag, task_names, scroll_to);
 				});
 			});
 
@@ -83,6 +84,7 @@ impl TagWidget<'_> {
 		ui: &mut egui::Ui,
 		tag: &Tag,
 		task_names: &HashMap<Uuid, String>,
+		scroll_to: &mut Option<Uuid>,
 	) -> egui::Response {
 		let col = get_tag_color(tag);
 
@@ -96,7 +98,7 @@ impl TagWidget<'_> {
 				ui.label(tag.name.to_case(convert_case::Case::Title));
 
 				if let Some(value) = &tag.value {
-					Self::draw_tag_value(ui, value, col, task_names);
+					Self::draw_tag_value(ui, value, col, task_names, scroll_to);
 				}
 			})
 			.response
@@ -107,22 +109,36 @@ impl TagWidget<'_> {
 		tag_value: &TagValue,
 		color: egui::Color32,
 		task_names: &HashMap<Uuid, String>,
+		scroll_to: &mut Option<Uuid>,
 	) {
 		let color = color.lerp_to_gamma(egui::Color32::WHITE, 0.3);
 
 		match tag_value {
 			TagValue::Tag(tag) => {
-				Self::draw_tag(ui, tag, task_names);
+				Self::draw_tag(ui, tag, task_names, scroll_to);
 			}
 			TagValue::List(list) => {
 				for value in list {
-					Self::draw_tag_value(ui, value, color, task_names);
+					Self::draw_tag_value(ui, value, color, task_names, scroll_to);
 				}
 			}
 			TagValue::Dictionary(dict) => {
 				for (key, value) in dict {
 					ui.weak(key);
-					Self::draw_tag_value(ui, value, color, task_names);
+					Self::draw_tag_value(ui, value, color, task_names, scroll_to);
+				}
+			}
+			TagValue::TaskReference(uuid) => {
+				if ui
+					.button(
+						egui::RichText::new(
+							task_names.get(uuid).map(|s| s.as_str()).unwrap_or("???"),
+						)
+						.color(Settings::get().theme.get_catppuccin().yellow),
+					)
+					.clicked()
+				{
+					*scroll_to = Some(*uuid);
 				}
 			}
 			other => {
@@ -146,12 +162,12 @@ impl TagWidget<'_> {
 									.unwrap_or(d.format(DEFAULT_DATE_FORMAT).to_string()),
 							),
 							TagValue::Text(t) => egui::RichText::new(t.clone()),
-							TagValue::List(_) | TagValue::Dictionary(_) | TagValue::Tag(_) => {
+							TagValue::List(_)
+							| TagValue::Dictionary(_)
+							| TagValue::Tag(_)
+							| TagValue::TaskReference(_) => {
 								unreachable!("already handled")
 							}
-							TagValue::TaskReference(uuid) => egui::RichText::new(
-								task_names.get(uuid).map(|s| s.as_str()).unwrap_or("???"),
-							).underline().color(Settings::get().theme.get_catppuccin().yellow),
 						});
 					});
 			}
