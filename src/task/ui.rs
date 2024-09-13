@@ -197,14 +197,18 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 
 						ui.add_space(4.0);
 
-						ui.horizontal(|ui| {
+						ui.with_layout(egui::Layout::right_to_left(egui::Align::BOTTOM), |ui| {
 							if ui.small_button("📋").clicked() {
 								ui.output_mut(|o| {
 									o.copied_text = self.task.get_uuid().to_string();
 								});
 							}
 
-							ui.small(egui::RichText::new(self.task.get_uuid().to_string()).weak());
+							ui.small(
+								egui::RichText::new(self.task.get_uuid().to_string())
+									.weak()
+									.monospace(),
+							);
 						});
 					});
 				}
