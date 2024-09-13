@@ -225,9 +225,13 @@ impl App for AdhdMateriaApp {
 				.default_width(576.0)
 				.show_animated(ctx, self.selected_task.is_some(), |ui| {
 					let selected_task_id = self.selected_task.as_ref().expect("is some").uuid.clone();
-					let selected_task = task_list
-						.get_mut(&selected_task_id)
-						.expect("selected id should be valid");
+					let selected_task = if let Some(selected_task) = task_list
+						.get_mut(&selected_task_id) {
+						selected_task
+					} else {
+						self.selected_task = None;
+						return;
+					};
 
 					ui.horizontal(|ui| {
 						ui.heading(selected_task.name.as_str());
