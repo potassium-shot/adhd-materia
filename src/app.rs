@@ -46,6 +46,8 @@ pub struct AdhdMateriaApp {
 	task_name_cache: HashMap<Uuid, String>,
 	side_panel: SidePanel,
 
+	selected_task: Option<Uuid>,
+
 	interactable: bool,
 
 	filter_list: Result<FilterList, &'static DataDirError>,
@@ -127,6 +129,8 @@ impl AdhdMateriaApp {
 			task_name_cache: HashMap::new(),
 			side_panel: SidePanel::default(),
 
+			selected_task: None,
+
 			interactable: true,
 
 			filter_list,
@@ -202,6 +206,53 @@ impl App for AdhdMateriaApp {
 				.as_mut()
 				.is_ok_and(|sorting_list| sorting_list.check_changed());
 
+		if let Ok(task_list) = self.task_list.as_mut() {
+			egui::SidePanel::right("right_panel")
+				.min_width(384.0)
+				.default_width(576.0)
+				.show_animated(ctx, self.selected_task.is_some(), |ui| {
+					let selected_task_id = self.selected_task.as_ref().expect("is some");
+					let selected_task = task_list
+						.get_mut(selected_task_id)
+						.expect("selected id should be valid");
+
+					ui.horizontal(|ui| {
+						ui.heading(selected_task.name.as_str());
+						if ui.button("⮪").clicked() {
+							self.selected_task = None;
+						}
+					});
+					ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+						if ui.small_button("📋").clicked() {
+							ui.output_mut(|o| {
+								o.copied_text = selected_task.get_uuid().to_string();
+							});
+						}
+
+						ui.small(
+							egui::RichText::new(selected_task.get_uuid().to_string())
+								.weak()
+								.monospace(),
+						);
+					});
+					ui.separator();
+					ui.add_space(8.0);
+
+					ui.label(selected_task.description.as_str());
+
+					ui.add_space(8.0);
+					ui.separator();
+					ui.add_space(8.0);
+
+					ui.horizontal_wrapped(|ui| {
+						for tag in selected_task.tags.iter_mut() {
+							tag.widget(false).show(ui, &self.task_name_cache);
+							ui.add_space(8.0);
+						}
+					});
+				});
+		}
+
 		egui::CentralPanel::default().show(ctx, |ui| {
 			ui.heading("Task List");
 			ui.horizontal_wrapped(|ui| {
@@ -245,9 +296,19 @@ impl App for AdhdMateriaApp {
 									.spacing((40.0, 12.0))
 									.striped(true)
 									.show(ui, |ui| {
-										for task in self.task_display_list.as_ref().expect("display list should be Some when task list is ok").tasks() {
-											let task = task_list.get_mut(task).expect("task display list should only have valid uuids");
-											update_required |= task.widget().show(ui, &self.task_name_cache);
+										for task_id in self.task_display_list.as_ref().expect("display list should be Some when task list is ok").tasks() {
+											let task = task_list.get_mut(task_id).expect("task display list should only have valid uuids");
+											let task_widget_response = task.widget().show(ui, &self.task_name_cache);
+											update_required |= task_widget_response.changed;
+
+											if task_widget_response.selected {
+												if self.selected_task == Some(*task_id) {
+													self.selected_task = None;
+												} else {
+													self.selected_task = Some(task_id.clone());
+												}
+											}
+
 											ui.end_row();
 
 											if task.is_pending_delete() {

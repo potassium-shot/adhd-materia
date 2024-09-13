@@ -14,12 +14,21 @@ use super::{
 	NormalTaskData, Task, TaskPath, TaskState, TaskTypeData,
 };
 
+pub struct TaskWidgetResponse {
+	pub changed: bool,
+	pub selected: bool,
+}
+
 pub struct TaskWidget<'task, T> {
 	task: &'task mut Task<T>,
 }
 
 impl TaskWidget<'_, NormalTaskData> {
-	pub fn show(mut self, ui: &mut egui::Ui, task_names: &HashMap<Uuid, String>) -> bool {
+	pub fn show(
+		mut self,
+		ui: &mut egui::Ui,
+		task_names: &HashMap<Uuid, String>,
+	) -> TaskWidgetResponse {
 		self.draw_task_widget(ui, TaskPath::Tasks, true, task_names)
 	}
 }
@@ -31,7 +40,11 @@ impl<'task, T: TaskTypeData> TaskWidget<'task, T> {
 }
 
 impl TaskWidget<'_, ScheduledTask> {
-	pub fn show(mut self, ui: &mut egui::Ui, task_names: &HashMap<Uuid, String>) -> bool {
+	pub fn show(
+		mut self,
+		ui: &mut egui::Ui,
+		task_names: &HashMap<Uuid, String>,
+	) -> TaskWidgetResponse {
 		let uuid = self.task.get_uuid().clone();
 
 		ui.push_id(uuid, |ui| {
@@ -123,8 +136,11 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 		path: TaskPath,
 		can_be_done: bool,
 		task_names: &HashMap<Uuid, String>,
-	) -> bool {
-		let mut changed = false;
+	) -> TaskWidgetResponse {
+		let mut response = TaskWidgetResponse {
+			changed: false,
+			selected: false,
+		};
 
 		ui.push_id(*self.task.get_uuid(), |ui| {
 			let mut set_pending_delete = false;
@@ -156,14 +172,16 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 											toast_error!("Could not save task: {}", e);
 										}
 
-										changed = true;
+										response.changed = true;
 									}
 								});
 
 								ui.separator();
 							}
 
-							ui.label(egui::RichText::from(self.task.name.as_str()).heading());
+							response.selected = ui
+								.button(egui::RichText::from(self.task.name.as_str()).heading())
+								.clicked();
 
 							if ui
 								.button(
@@ -231,7 +249,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 									.clicked()
 								{
 									self.task.display(path);
-									changed = true;
+									response.changed = true;
 								}
 
 								if ui
@@ -306,6 +324,6 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 			}
 		});
 
-		changed
+		response
 	}
 }
