@@ -20,12 +20,13 @@ use crate::{
 	settings::Settings,
 	side_panel::{SidePanel, SidePanelKind},
 	startup_script::StartupScript,
+	tag::{Tag, TagValue},
 	task::{
 		display_list::TaskDisplayList,
 		list::{TaskList, TaskListError},
 		TaskPath,
 	},
-	toast_info, toast_success,
+	toast_error, toast_info, toast_success,
 };
 
 static mut SCRIPT_LOCK: Option<crate::scripts::PocketPyLock> = None;
@@ -211,9 +212,9 @@ impl App for AdhdMateriaApp {
 				.min_width(384.0)
 				.default_width(576.0)
 				.show_animated(ctx, self.selected_task.is_some(), |ui| {
-					let selected_task_id = self.selected_task.as_ref().expect("is some");
+					let selected_task_id = self.selected_task.expect("is some").clone();
 					let selected_task = task_list
-						.get_mut(selected_task_id)
+						.get_mut(&selected_task_id)
 						.expect("selected id should be valid");
 
 					ui.horizontal(|ui| {
@@ -249,6 +250,61 @@ impl App for AdhdMateriaApp {
 							tag.widget(false).show(ui, &self.task_name_cache);
 							ui.add_space(8.0);
 						}
+					});
+
+					ui.add_space(8.0);
+					ui.separator();
+					ui.add_space(8.0);
+
+					ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
+						egui::ScrollArea::vertical()
+							.auto_shrink(false)
+							.show(ui, |ui| {
+								egui::Grid::new("subtask_grid")
+									.num_columns(1)
+									.spacing((40.0, 12.0))
+									.striped(true)
+									.show(ui, |ui| {
+										for task in task_list.tasks_mut() {
+											if task.is_subtask_of(&selected_task_id) {
+												let task_widget_response =
+													task.widget().show(ui, &self.task_name_cache);
+
+												update_required |= task_widget_response.changed;
+
+												if task_widget_response.selected {
+													if self.selected_task == Some(*task.get_uuid())
+													{
+														self.selected_task = None;
+													} else {
+														self.selected_task =
+															Some(task.get_uuid().clone());
+													}
+												}
+
+												ui.end_row();
+											}
+										}
+									});
+
+								ui.add_space(16.0);
+
+								if ui.button("New Subtask").clicked() {
+									let mut new_task = Settings::get().default_task.clone();
+									new_task.new_uuid();
+									new_task.tags.push(Tag::new(
+										String::from("subtask_of"),
+										Some(TagValue::TaskReference(selected_task_id.clone())),
+									));
+									new_task.edit();
+
+									if let Err(e) = task_list.add_task(new_task) {
+										toast_error!("Could not create task: {}", e);
+									}
+
+									update_required = true;
+								}
+							});
 					});
 				});
 		}
@@ -289,7 +345,7 @@ impl App for AdhdMateriaApp {
 
 				match &mut self.task_list {
 					Ok(task_list) => {
-						ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
+						ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
 							egui::ScrollArea::vertical().auto_shrink(false).show(ui, |ui| {
 								egui::Grid::new("task_grid")
 									.num_columns(1)
@@ -379,6 +435,18 @@ impl App for AdhdMateriaApp {
 			});
 
 			if clear_done {
+				if let Some(selected_task) = self.selected_task {
+					if let Ok(task_list) = self.task_list.as_mut() {
+						for task in task_list.tasks_mut() {
+							if task.is_subtask_of(&selected_task) && task.is_done() {
+								task.mark_for_delete();
+								done_cleared += 1;
+							}
+						}
+					}
+				}
+
+				
 				if done_cleared > 0 {
 					toast_success!("{} tasks cleared", done_cleared);
 				} else {

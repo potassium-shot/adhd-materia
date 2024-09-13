@@ -3,7 +3,11 @@ use std::{path::Path, str::FromStr, time::Duration};
 use ui::TaskWidget;
 use uuid::Uuid;
 
-use crate::{data_dir::DataDirError, settings::Settings, tag::Tag};
+use crate::{
+	data_dir::DataDirError,
+	settings::Settings,
+	tag::{Tag, TagValue},
+};
 
 pub mod display_list;
 pub mod list;
@@ -194,6 +198,16 @@ impl<T: TaskTypeData> Task<T> {
 
 	pub fn is_done(&self) -> bool {
 		self.tags.contains(&Settings::get_done_tag())
+	}
+
+	pub fn is_subtask_of(&self, other: &Uuid) -> bool {
+		self.tags
+			.iter()
+			.find(|tag| {
+				tag.name.as_str() == "subtask_of"
+					&& tag.value == Some(TagValue::TaskReference(*other))
+			})
+			.is_some()
 	}
 }
 
