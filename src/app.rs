@@ -291,7 +291,7 @@ impl App for AdhdMateriaApp {
 											let task = task_list.get_mut(task_id).expect("task display list should only have valid uuids");
 											if task.is_subtask_of(&selected_task_id) {
 												let task_widget_response =
-													task.widget().show(ui, &self.task_name_cache);
+													task.widget().show(ui, &self.task_name_cache, selected_task_id == *task_id);
 
 												update_required |= task_widget_response.changed;
 
@@ -373,6 +373,8 @@ impl App for AdhdMateriaApp {
 
 				self.interactable = true;
 
+				let selected_task = self.selected_task.as_ref().map(|s| s.uuid.clone());
+
 				match &mut self.task_list {
 					Ok(task_list) => {
 						ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
@@ -384,7 +386,7 @@ impl App for AdhdMateriaApp {
 									.show(ui, |ui| {
 										for task_id in self.task_display_list.as_ref().expect("display list should be Some when task list is ok").tasks() {
 											let task = task_list.get_mut(task_id).expect("task display list should only have valid uuids");
-											let task_widget_response = task.widget().show(ui, &self.task_name_cache);
+											let task_widget_response = task.widget().show(ui, &self.task_name_cache, selected_task == Some(*task_id));
 											update_required |= task_widget_response.changed;
 
 											ui.end_row();
@@ -446,9 +448,13 @@ impl App for AdhdMateriaApp {
 							});
 						});
 
-						let (anything_deleted, cleanup_errors) = task_list.cleanup_marked_for_delete();
+						let (amount_deleted, cleanup_errors) = task_list.cleanup_marked_for_delete();
 
-						update_required |= anything_deleted;
+						if amount_deleted > 0 {
+							update_required = true;
+							
+							toast_info!("Deleted {} tasks", amount_deleted);
+						}
 
 						for e in cleanup_errors {
 							crate::toasts()

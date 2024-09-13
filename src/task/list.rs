@@ -59,11 +59,12 @@ impl<T: TaskTypeData> TaskList<T> {
 		Ok(())
 	}
 
-	pub fn delete_task(&mut self, uuid: &Uuid) -> Result<(), TaskError> {
+	pub fn delete_task(&mut self, uuid: &Uuid) -> Result<i32, TaskError> {
 		if let Some(task) = self.tasks.remove(uuid) {
 			task.delete(self.path)?;
 		}
 
+		let mut deleted = 1;
 		let mut to_delete = Vec::new();
 
 		for (other_uuid, task) in self.tasks.iter_mut() {
@@ -90,13 +91,13 @@ impl<T: TaskTypeData> TaskList<T> {
 		}
 
 		for uuid in to_delete {
-			self.delete_task(&uuid)?;
+			deleted += self.delete_task(&uuid)?;
 		}
 
-		Ok(())
+		Ok(deleted)
 	}
 
-	pub fn cleanup_marked_for_delete(&mut self) -> (bool, Vec<TaskError>) {
+	pub fn cleanup_marked_for_delete(&mut self) -> (i32, Vec<TaskError>) {
 		let to_delete: Vec<Uuid> = self
 			.tasks
 			.iter()
@@ -109,17 +110,18 @@ impl<T: TaskTypeData> TaskList<T> {
 			})
 			.collect();
 
-		let anything = !to_delete.is_empty();
+		let mut amount = 0;
 
 		let mut error_list = Vec::new();
 
 		for uuid in to_delete {
-			if let Err(e) = self.delete_task(&uuid) {
-				error_list.push(e);
+			match self.delete_task(&uuid) {
+				Ok(a) => amount += a,
+				Err(e) => error_list.push(e),
 			}
 		}
 
-		(anything, error_list)
+		(amount, error_list)
 	}
 
 	pub fn save_all(&self) {

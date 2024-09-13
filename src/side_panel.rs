@@ -266,7 +266,7 @@ impl SidePanel {
 						settings.default_task.edit_no_buttons();
 
 						ui.label("Default task");
-						settings.default_task.widget().show(ui, task_names);
+						settings.default_task.widget().show(ui, task_names, false);
 						ui.end_row();
 
 						ui.label("Repeating task rewind");
