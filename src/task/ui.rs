@@ -123,7 +123,14 @@ impl TaskWidget<'_, ScheduledTask> {
 							});
 						}
 					}
-					self.draw_task_widget(ui, TaskPath::Scheduled, false, task_names, false, scroll_to)
+					self.draw_task_widget(
+						ui,
+						TaskPath::Scheduled,
+						false,
+						task_names,
+						false,
+						scroll_to,
+					)
 				})
 				.inner
 			})
