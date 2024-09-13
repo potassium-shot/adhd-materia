@@ -2,9 +2,9 @@ use std::cmp::Ordering;
 
 use uuid::Uuid;
 
-use crate::scripts::{
+use crate::{scripts::{
 	filter::FilterList, sorting::SortingList, value::AnyIntoPocketPyValue, PocketPyScript,
-};
+}, toast_error};
 
 use super::{list::TaskList, Task};
 
@@ -64,7 +64,7 @@ impl TaskDisplayList {
 						) {
 							Ok(passes) => Some(passes),
 							Err(e) => {
-								eprintln!("Error in filter script:\n{}", e);
+								toast_error!("Error in filter script:\n{}", e);
 								None
 							}
 						},
@@ -97,7 +97,7 @@ impl TaskDisplayList {
 						) {
 							Ok(orderings) => Some(orderings),
 							Err(e) => {
-								eprintln!("Error in sorting script:\n{}", e);
+								toast_error!("Error in sorting script:\n{}", e);
 								None
 							}
 						},

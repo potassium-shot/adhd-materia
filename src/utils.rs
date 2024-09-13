@@ -35,7 +35,10 @@ macro_rules! toast {
 #[macro_export]
 macro_rules! toast_error {
 	($fmt: expr, $($e: expr),*) => {
-		crate::toast!(error, 10_000, $fmt, $($e),*)
+		{
+			log::error!($fmt, $($e),*);
+			crate::toast!(error, 10_000, $fmt, $($e),*)
+		}
 	};
 	($fmt: expr) => {
 		crate::toast_error!($fmt,)
@@ -45,7 +48,10 @@ macro_rules! toast_error {
 #[macro_export]
 macro_rules! toast_info {
 	($fmt: expr, $($e: expr),*) => {
-		crate::toast!(info, 3000, $fmt, $($e),*)
+		{
+			log::info!($fmt, $($e),*);
+			crate::toast!(info, 3000, $fmt, $($e),*)
+		}
 	};
 	($fmt: expr) => {
 		crate::toast_info!($fmt,)
@@ -55,7 +61,10 @@ macro_rules! toast_info {
 #[macro_export]
 macro_rules! toast_success {
 	($fmt: expr, $($e: expr),*) => {
-		crate::toast!(success, 3000, $fmt, $($e),*)
+		{
+			log::info!($fmt, $($e),*);
+			crate::toast!(success, 3000, $fmt, $($e),*)
+		}
 	};
 	($fmt: expr) => {
 		crate::toast_success!($fmt,)
@@ -64,11 +73,9 @@ macro_rules! toast_success {
 
 #[macro_export]
 macro_rules! handle_toast_error {
-	($fmt: expr, $e: expr) => {
-		{
-			if let Err(e) = $e {
-				crate::toast_error!($fmt, e);
-			}
+	($fmt: expr, $e: expr) => {{
+		if let Err(e) = $e {
+			crate::toast_error!($fmt, e);
 		}
-	};
+	}};
 }

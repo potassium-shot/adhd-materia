@@ -5,6 +5,7 @@ use std::{
 };
 
 use badge::BadgeType;
+use log::info;
 use pocketpy_sys::*;
 
 use standalone_script::StandaloneScriptBadgeType;
@@ -50,7 +51,7 @@ impl PocketPyLock<'_> {
 			py_bindings::initialize_bindings();
 		}
 
-		println!("PocketPy initialized");
+		info!("PocketPy initialized");
 
 		Self(lock)
 	}
@@ -68,7 +69,7 @@ impl Drop for PocketPyLock<'_> {
 	fn drop(&mut self) {
 		unsafe {
 			py_finalize();
-			println!("PocketPy finalized");
+			info!("PocketPy finalized");
 		}
 	}
 }

@@ -1,4 +1,8 @@
 fn main() -> eframe::Result {
+	if std::env::var("RUST_LOG").is_err() {
+		std::env::set_var("RUST_LOG", "warn");
+	}
+
 	env_logger::init();
 
 	let native_options = eframe::NativeOptions {
