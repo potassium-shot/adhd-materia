@@ -2,7 +2,7 @@ use std::{collections::HashMap, time::Duration};
 
 use uuid::Uuid;
 
-use crate::data_dir::DataDirError;
+use crate::{data_dir::DataDirError, tag::TagValue};
 
 use super::{NormalTaskData, Task, TaskError, TaskPath, TaskTypeData};
 
@@ -62,6 +62,35 @@ impl<T: TaskTypeData> TaskList<T> {
 	pub fn delete_task(&mut self, uuid: &Uuid) -> Result<(), TaskError> {
 		if let Some(task) = self.tasks.remove(uuid) {
 			task.delete(self.path)?;
+		}
+
+		let mut to_delete = Vec::new();
+
+		for (other_uuid, task) in self.tasks.iter_mut() {
+			let mut subtask_tag_count = 0;
+			let mut delete_i = None;
+
+			task.tags.iter().enumerate().for_each(|(i, tag)| {
+				if tag.name.as_str() == "subtask_of" {
+					subtask_tag_count += 1;
+
+					if tag.value == Some(TagValue::TaskReference(*uuid)) {
+						delete_i = Some(i);
+					}
+				}
+			});
+
+			if let Some(i) = delete_i {
+				task.tags.remove(i);
+
+				if subtask_tag_count == 1 {
+					to_delete.push(other_uuid.clone());
+				}
+			}
+		}
+
+		for uuid in to_delete {
+			self.delete_task(&uuid)?;
 		}
 
 		Ok(())
