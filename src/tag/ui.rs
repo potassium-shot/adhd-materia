@@ -47,6 +47,7 @@ impl TagWidget<'_> {
 		ui: &mut egui::Ui,
 		task_names: &HashMap<Uuid, String>,
 		scroll_to: &mut Option<Uuid>,
+		selected_task: &mut Option<Uuid>,
 	) -> Option<TagSwapRequest> {
 		if self.edit_mode {
 			let mut swap_req = None;
@@ -70,7 +71,7 @@ impl TagWidget<'_> {
 
 			ui.allocate_ui_at_rect(rect.with_max_x(ui.available_width()), |ui| {
 				ui.horizontal_centered(|ui| {
-					Self::draw_tag(ui, &self.tag, task_names, scroll_to);
+					Self::draw_tag(ui, &self.tag, task_names, scroll_to, selected_task);
 				});
 			});
 
@@ -85,6 +86,7 @@ impl TagWidget<'_> {
 		tag: &Tag,
 		task_names: &HashMap<Uuid, String>,
 		scroll_to: &mut Option<Uuid>,
+		selected_task: &mut Option<Uuid>,
 	) -> egui::Response {
 		let col = get_tag_color(tag);
 
@@ -98,7 +100,7 @@ impl TagWidget<'_> {
 				ui.label(tag.name.to_case(convert_case::Case::Title));
 
 				if let Some(value) = &tag.value {
-					Self::draw_tag_value(ui, value, col, task_names, scroll_to);
+					Self::draw_tag_value(ui, value, col, task_names, scroll_to, selected_task);
 				}
 			})
 			.response
@@ -110,22 +112,23 @@ impl TagWidget<'_> {
 		color: egui::Color32,
 		task_names: &HashMap<Uuid, String>,
 		scroll_to: &mut Option<Uuid>,
+		selected_task: &mut Option<Uuid>,
 	) {
 		let color = color.lerp_to_gamma(egui::Color32::WHITE, 0.3);
 
 		match tag_value {
 			TagValue::Tag(tag) => {
-				Self::draw_tag(ui, tag, task_names, scroll_to);
+				Self::draw_tag(ui, tag, task_names, scroll_to, selected_task);
 			}
 			TagValue::List(list) => {
 				for value in list {
-					Self::draw_tag_value(ui, value, color, task_names, scroll_to);
+					Self::draw_tag_value(ui, value, color, task_names, scroll_to, selected_task);
 				}
 			}
 			TagValue::Dictionary(dict) => {
 				for (key, value) in dict {
 					ui.weak(key);
-					Self::draw_tag_value(ui, value, color, task_names, scroll_to);
+					Self::draw_tag_value(ui, value, color, task_names, scroll_to, selected_task);
 				}
 			}
 			TagValue::TaskReference(uuid) => {
@@ -139,6 +142,7 @@ impl TagWidget<'_> {
 					.clicked()
 				{
 					*scroll_to = Some(*uuid);
+					*selected_task = Some(*uuid);
 				}
 			}
 			other => {

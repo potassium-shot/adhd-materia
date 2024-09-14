@@ -31,8 +31,17 @@ impl TaskWidget<'_, NormalTaskData> {
 		task_names: &HashMap<Uuid, String>,
 		selected: bool,
 		scroll_to: &mut Option<Uuid>,
+		selected_task: &mut Option<Uuid>,
 	) -> TaskWidgetResponse {
-		self.draw_task_widget(ui, TaskPath::Tasks, true, task_names, selected, scroll_to)
+		self.draw_task_widget(
+			ui,
+			TaskPath::Tasks,
+			true,
+			task_names,
+			selected,
+			scroll_to,
+			selected_task,
+		)
 	}
 }
 
@@ -48,6 +57,7 @@ impl TaskWidget<'_, ScheduledTask> {
 		ui: &mut egui::Ui,
 		task_names: &HashMap<Uuid, String>,
 		scroll_to: &mut Option<Uuid>,
+		selected_task: &mut Option<Uuid>,
 	) -> TaskWidgetResponse {
 		let uuid = self.task.get_uuid().clone();
 
@@ -130,6 +140,7 @@ impl TaskWidget<'_, ScheduledTask> {
 						task_names,
 						false,
 						scroll_to,
+						selected_task,
 					)
 				})
 				.inner
@@ -149,6 +160,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 		task_names: &HashMap<Uuid, String>,
 		selected: bool,
 		scroll_to: &mut Option<Uuid>,
+		selected_task: &mut Option<Uuid>,
 	) -> TaskWidgetResponse {
 		let mut response = TaskWidgetResponse {
 			changed: false,
@@ -239,7 +251,12 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 
 								ui.horizontal_wrapped(|ui| {
 									for tag in self.task.tags.iter_mut() {
-										tag.widget(false).show(ui, task_names, scroll_to);
+										tag.widget(false).show(
+											ui,
+											task_names,
+											scroll_to,
+											selected_task,
+										);
 										ui.add_space(8.0);
 									}
 								});
@@ -312,9 +329,12 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 								let mut tags_to_swap = None;
 
 								for (i, tag) in self.task.tags.iter_mut().enumerate() {
-									if let Some(swap_dir) =
-										tag.widget(true).show(ui, task_names, scroll_to)
-									{
+									if let Some(swap_dir) = tag.widget(true).show(
+										ui,
+										task_names,
+										scroll_to,
+										selected_task,
+									) {
 										tags_to_swap = Some((
 											i as isize,
 											match swap_dir {

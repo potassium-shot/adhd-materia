@@ -70,6 +70,7 @@ impl SidePanel {
 		ui: &mut egui::Ui,
 		task_names: &HashMap<Uuid, String>,
 		scroll_to: &mut Option<Uuid>,
+		selected_task: &mut Option<Uuid>,
 	) {
 		match self {
 			Self::Hidden => {}
@@ -99,7 +100,7 @@ impl SidePanel {
 										.striped(true)
 										.show(ui, |ui| {
 											for task in task_list.tasks_mut() {
-												task.widget().show(ui, task_names, scroll_to);
+												task.widget().show(ui, task_names, scroll_to, selected_task);
 												ui.end_row();
 
 												if task.is_pending_delete() {
@@ -299,7 +300,7 @@ impl SidePanel {
 						settings.default_task.edit_no_buttons();
 
 						ui.label("Default task");
-						settings.default_task.widget().show(ui, task_names, false, scroll_to);
+						settings.default_task.widget().show(ui, task_names, false, scroll_to, selected_task);
 						ui.end_row();
 
 						ui.label("Repeating task rewind");
