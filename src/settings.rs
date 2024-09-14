@@ -1,27 +1,18 @@
 use std::{
 	str::FromStr,
-	sync::{LazyLock, Mutex, MutexGuard, RwLock, RwLockReadGuard},
+	sync::{LazyLock, Mutex, MutexGuard},
 };
 
 use chrono::Datelike;
 use convert_case::Casing;
 
-use crate::{data_dir::DataDirError, tag::Tag, task::Task};
+use crate::{data_dir::DataDirError, task::Task};
 
 pub const DEFAULT_SCHEDULED_TASK_TAG: &str = "scheduled_on($DATE)";
 pub const DEFAULT_DATE_FORMAT: &str = "%a. %-d %b. %Y";
-pub const DEFAULT_DONE_TAG: &str = "done";
 
 static SETTINGS: LazyLock<Mutex<Settings>> =
 	LazyLock::new(|| Mutex::new(Settings::load().unwrap_or_default()));
-
-static DONE_TAG: LazyLock<RwLock<Tag>> = LazyLock::new(|| {
-	RwLock::new(
-		Tag::from_str(&Settings::get().done_tag)
-			.or(Tag::from_str(DEFAULT_DONE_TAG))
-			.expect("Default done tag should be valid"),
-	)
-});
 
 #[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -32,7 +23,6 @@ pub struct Settings {
 	pub scheduled_task_tag: Option<String>,
 	pub delete_used_scheduled_tasks: bool,
 	pub date_format: String,
-	done_tag: String,
 	pub sprint_end_reference: chrono::NaiveDate,
 	pub sprint_end: SprintFrequency,
 }
@@ -46,7 +36,6 @@ impl Default for Settings {
 			scheduled_task_tag: Some(String::from(DEFAULT_SCHEDULED_TASK_TAG)),
 			delete_used_scheduled_tasks: true,
 			date_format: String::from(DEFAULT_DATE_FORMAT),
-			done_tag: String::from(DEFAULT_DONE_TAG),
 			sprint_end_reference: chrono::Local::now().date_naive(),
 			sprint_end: SprintFrequency::default(),
 		}
@@ -226,30 +215,6 @@ impl Settings {
 
 	pub fn get() -> MutexGuard<'static, Self> {
 		SETTINGS.lock().expect("Settings should be lockable")
-	}
-
-	pub fn get_done_tag() -> RwLockReadGuard<'static, Tag> {
-		DONE_TAG.read().expect("done tag should be readable")
-	}
-
-	pub fn get_done_tag_string_mut(&mut self) -> DoneTagStringGuard {
-		DoneTagStringGuard(self)
-	}
-}
-
-pub struct DoneTagStringGuard<'settings>(&'settings mut Settings);
-
-impl AsMut<String> for DoneTagStringGuard<'_> {
-	fn as_mut(&mut self) -> &mut String {
-		&mut self.0.done_tag
-	}
-}
-
-impl Drop for DoneTagStringGuard<'_> {
-	fn drop(&mut self) {
-		if let Ok(tag) = Tag::from_str(&self.0.done_tag) {
-			*DONE_TAG.write().expect("done tag should be writable") = tag;
-		}
 	}
 }
 

@@ -13,7 +13,7 @@ use super::{Tag, TagValue};
 static COLORHASH: LazyLock<colorhash::ColorHash> = LazyLock::new(|| colorhash::ColorHash::new());
 
 fn get_tag_color(tag: &Tag) -> egui::Color32 {
-	if tag.name.as_str() == Settings::get_done_tag().name.as_str() {
+	if tag.name.as_str() == "done" {
 		egui::Color32::from_rgb(0x20, 0xF0, 0x20)
 	} else {
 		let col_hash = COLORHASH.rgb(&tag.name);

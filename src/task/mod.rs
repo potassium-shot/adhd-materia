@@ -7,7 +7,6 @@ use crate::{
 	data_dir::DataDirError,
 	handle_toast_error,
 	session::Session,
-	settings::Settings,
 	tag::{Tag, TagValue},
 };
 
@@ -205,7 +204,7 @@ impl<T: TaskTypeData> Task<T> {
 	}
 
 	pub fn is_done(&self) -> bool {
-		self.tags.contains(&Settings::get_done_tag())
+		self.tags.iter().any(|tag| tag.name == "done")
 	}
 
 	pub fn is_subtask_of(&self, other: &Uuid) -> bool {

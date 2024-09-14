@@ -189,9 +189,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 						ui.vertical(|ui| {
 							ui.horizontal(|ui| {
 								if can_be_done {
-									let done_tag = Settings::get_done_tag();
-
-									ui.add_enabled_ui(!self.task.tags.contains(&done_tag), |ui| {
+									ui.add_enabled_ui(!self.task.is_done(), |ui| {
 										let bg_color = ui.visuals().hyperlink_color;
 										let fg_color = ui.visuals().window_fill;
 
@@ -202,7 +200,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 
 										if ui.button(egui::RichText::new("✅").size(20.0)).clicked()
 										{
-											self.task.tags.insert(0, done_tag.clone());
+											self.task.tags.insert(0, Tag::new(String::from("done"), None));
 
 											if let Err(e) = self.task.save(path) {
 												toast_error!("Could not save task: {}", e);

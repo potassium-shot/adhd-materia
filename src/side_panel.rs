@@ -382,10 +382,6 @@ impl SidePanel {
 						ui.text_edit_singleline(&mut settings.date_format);
 						ui.end_row();
 
-						ui.label("Done tag name");
-						ui.text_edit_singleline(settings.get_done_tag_string_mut().as_mut());
-						ui.end_row();
-
 						ui.label("Sprints Start");
 						ui.add(egui_extras::DatePickerButton::new(&mut settings.sprint_end_reference));
 						ui.end_row();
