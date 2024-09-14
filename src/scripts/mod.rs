@@ -27,6 +27,7 @@ pub use py_bindings::new_tasks_waitlist_next;
 static POCKETPY_LOCK: Mutex<Mutex<()>> = Mutex::new(Mutex::new(()));
 
 #[allow(unused_macros)]
+#[macro_export]
 macro_rules! pyprintln {
 	($fmt: expr, $($arg: expr),*) => {
 		unsafe {

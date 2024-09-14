@@ -48,6 +48,11 @@ pub unsafe fn initialize_bindings() {
 	);
 	py_bindmethod(
 		task_type,
+		c"get_tags_with_name".as_ptr(),
+		Some(task__get_tags_with_name),
+	);
+	py_bindmethod(
+		task_type,
 		c"has_tag_with_name".as_ptr(),
 		Some(task__has_tag_with_name),
 	);
@@ -173,6 +178,37 @@ unsafe extern "C" fn task__get_tag_with_name(
 	}
 
 	py_newnone(py_retval());
+	true
+}
+
+unsafe extern "C" fn task__get_tags_with_name(
+	argc: std::os::raw::c_int,
+	argv: *mut py_TValue,
+) -> bool {
+	if argc != 2 {
+		py_newnone(py_retval());
+		return py_exception(
+			py_totype(py_getbuiltin(py_name(c"Exception".as_ptr()))),
+			c"Expected 2 arguments".as_ptr(),
+		);
+	}
+
+	let self_ = argv;
+	let tag_name = ((argv as usize) + size_of::<usize>() * 2) as *mut py_TValue;
+	let tag_list = py_getdict(self_, py_name(c"tags".as_ptr()));
+
+	spytvalue!(r0);
+	py_newlist(r0);
+
+	for i in 0..(py_list_len(tag_list)) {
+		let tag = py_list_getitem(tag_list, i);
+
+		if py_equal(py_getdict(tag, py_name(c"name".as_ptr())), tag_name) == 1 {
+			py_list_append(r0, tag);
+		}
+	}
+
+	py_assign(py_retval(), r0);
 	true
 }
 
