@@ -1,16 +1,11 @@
 use std::str::FromStr;
 
 use crate::{
-	scripts::{badge::BadgeType, standalone_script::StandaloneScriptBadgeType, PocketPyScript},
-	session::{Session, SessionError},
-	settings::Settings,
-	tag::Tag,
-	task::{
+	handle_toast_error, scripts::{badge::BadgeType, standalone_script::StandaloneScriptBadgeType, PocketPyScript}, session::{Session, SessionError}, settings::Settings, tag::Tag, task::{
 		list::{TaskList, TaskListError},
 		scheduled::{RepeatMode, ScheduledTask},
 		NormalTaskData, TaskError, TaskPath,
-	},
-	toast_error,
+	}, toast_error
 };
 
 pub struct StartupScript;
@@ -26,6 +21,23 @@ impl StartupScript {
 				}
 			}
 		}
+
+		// Evaluate sprints
+		let settings = Settings::get();
+
+		if settings.sprint_end.must_reset(
+			settings.sprint_end_reference,
+			Session::current().last_session,
+		) {
+			handle_toast_error!("Could not end sprint: {}", Session::mutate(|session| {
+				session
+					.past_done_counters
+					.insert(0, session.current_done_counter);
+				session.current_done_counter = 0;
+			}));
+		}
+
+		drop(settings);
 
 		// Evaluate scheduled tasks
 		let (mut scheduled_task_list, mut errors) =

@@ -5,6 +5,8 @@ use uuid::Uuid;
 
 use crate::{
 	data_dir::DataDirError,
+	handle_toast_error,
+	session::Session,
 	settings::Settings,
 	tag::{Tag, TagValue},
 };
@@ -118,10 +120,16 @@ impl<T: TaskTypeData> Task<T> {
 
 	fn delete(&self, path: TaskPath) -> Result<(), TaskError> {
 		let name = self.uuid.to_string();
+		let res = std::fs::remove_file(Self::get_data_dir(&name, path)?.join(name))?;
 
-		Ok(std::fs::remove_file(
-			Self::get_data_dir(&name, path)?.join(name),
-		)?)
+		if self.is_done() {
+			handle_toast_error!(
+				"Could not count as done: {}",
+				Session::mutate(|session| session.current_done_counter += 1)
+			);
+		}
+
+		Ok(res)
 	}
 
 	pub fn mark_for_delete(&mut self) {

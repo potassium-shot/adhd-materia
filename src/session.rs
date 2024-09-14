@@ -14,6 +14,8 @@ pub struct Session {
 	pub last_session: chrono::NaiveDate,
 	pub set_filters: Vec<String>,
 	pub set_sortings: Vec<String>,
+	pub current_done_counter: i32,
+	pub past_done_counters: Vec<i32>,
 }
 
 impl Default for Session {
@@ -22,6 +24,8 @@ impl Default for Session {
 			last_session: chrono::Local::now().date_naive(),
 			set_filters: Vec::new(),
 			set_sortings: Vec::new(),
+			current_done_counter: 0,
+			past_done_counters: Vec::new(),
 		}
 	}
 }

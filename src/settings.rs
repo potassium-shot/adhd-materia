@@ -3,6 +3,7 @@ use std::{
 	sync::{LazyLock, Mutex, MutexGuard, RwLock, RwLockReadGuard},
 };
 
+use chrono::Datelike;
 use convert_case::Casing;
 
 use crate::{data_dir::DataDirError, tag::Tag, task::Task};
@@ -32,6 +33,8 @@ pub struct Settings {
 	pub delete_used_scheduled_tasks: bool,
 	pub date_format: String,
 	done_tag: String,
+	pub sprint_end_reference: chrono::NaiveDate,
+	pub sprint_end: SprintFrequency,
 }
 
 impl Default for Settings {
@@ -44,6 +47,8 @@ impl Default for Settings {
 			delete_used_scheduled_tasks: true,
 			date_format: String::from(DEFAULT_DATE_FORMAT),
 			done_tag: String::from(DEFAULT_DONE_TAG),
+			sprint_end_reference: chrono::Local::now().date_naive(),
+			sprint_end: SprintFrequency::default(),
 		}
 	}
 }
@@ -53,6 +58,98 @@ pub enum RepeatableRewind {
 	#[default]
 	One,
 	All,
+}
+
+#[derive(
+	Debug, PartialEq, Eq, Clone, Copy, Default, serde::Serialize, serde::Deserialize, kinded::Kinded,
+)]
+pub enum SprintFrequency {
+	#[default]
+	Weekly,
+	TwoWeekly,
+	Monthly,
+	Custom {
+		days: u32,
+	},
+}
+
+impl std::fmt::Display for SprintFrequency {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			Self::Weekly => write!(f, "Weekly"),
+			Self::TwoWeekly => write!(f, "Two Weekly"),
+			Self::Monthly => write!(f, "Monthly"),
+			Self::Custom { days } => write!(f, "Every {} days", days),
+		}
+	}
+}
+
+impl SprintFrequency {
+	pub fn must_reset(&self, reference: chrono::NaiveDate, last_check: chrono::NaiveDate) -> bool {
+		match self {
+			Self::Weekly => self.must_reset_custom(reference, last_check, 7),
+			Self::TwoWeekly => self.must_reset_custom(reference, last_check, 14),
+			Self::Monthly => {
+				let target_month_day = reference.day0();
+				let today = chrono::Local::now().date_naive();
+
+				if today == last_check {
+					return false;
+				}
+
+				let with_target_month = if today.day0() > target_month_day {
+					last_check
+						.checked_add_months(chrono::Months::new(1))
+						.unwrap()
+				} else {
+					last_check
+				};
+
+				let with_target_day = match with_target_month.with_day0(target_month_day) {
+					Some(date) => date,
+					None => with_target_month
+						.checked_add_months(chrono::Months::new(1))
+						.unwrap()
+						.with_day0(0)
+						.unwrap()
+						.pred_opt()
+						.unwrap(),
+				};
+
+				today >= with_target_day
+			}
+			Self::Custom { days } => self.must_reset_custom(reference, last_check, *days),
+		}
+	}
+
+	fn must_reset_custom(
+		&self,
+		reference: chrono::NaiveDate,
+		last_check: chrono::NaiveDate,
+		days: u32,
+	) -> bool {
+		let days = days as i32;
+
+		let reference_dayce = reference.num_days_from_ce();
+		let last_check_dayce = last_check.num_days_from_ce();
+		let today_dayce = chrono::Local::now().num_days_from_ce();
+
+		if today_dayce == last_check_dayce {
+			return false;
+		}
+
+		let delta = last_check_dayce - reference_dayce;
+		let mut quo = delta / days;
+		let rest = delta % days;
+
+		if rest > 0 {
+			quo += 1;
+		}
+
+		let next_check = quo * days + reference_dayce;
+
+		today_dayce >= next_check
+	}
 }
 
 #[derive(

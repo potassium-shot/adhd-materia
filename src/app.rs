@@ -8,25 +8,16 @@ use eframe::{App, CreationContext};
 use uuid::Uuid;
 
 use crate::{
-	data_dir::DataDirError,
-	handle_toast_error,
-	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
-	scripts::{
+	data_dir::DataDirError, handle_toast_error, ok_cancel_dialog::{OkCancelDialog, OkCancelResult}, scripts::{
 		badge::{BadgeList, BadgeType},
 		filter::FilterList,
 		sorting::SortingList,
 		PocketPyLock,
-	},
-	settings::Settings,
-	side_panel::{SidePanel, SidePanelKind},
-	startup_script::StartupScript,
-	tag::{Tag, TagValue},
-	task::{
+	}, session::Session, settings::Settings, side_panel::{SidePanel, SidePanelKind}, startup_script::StartupScript, tag::{Tag, TagValue}, task::{
 		display_list::TaskDisplayList,
 		list::{TaskList, TaskListError},
 		TaskPath,
-	},
-	toast_error, toast_info, toast_success,
+	}, toast_error, toast_info, toast_success
 };
 
 static mut SCRIPT_LOCK: Option<crate::scripts::PocketPyLock> = None;
@@ -195,6 +186,8 @@ impl App for AdhdMateriaApp {
 					ui.separator();
 					side_panel_button(ui, SidePanelKind::Scripts, '📃');
 					ui.separator();
+					side_panel_button(ui, SidePanelKind::CompletedTasks, '☑');
+					ui.separator();
 					side_panel_button(ui, SidePanelKind::Settings, '⛭');
 				});
 			});
@@ -353,12 +346,19 @@ impl App for AdhdMateriaApp {
 			ui.separator();
 			ui.add_space(8.0);
 
-			let clear_done = ui.horizontal_wrapped(|ui| {
-				ui.button("Clear Done Tasks").clicked()
-			}).inner;
+			let mut clear_done = false;
+			
+			ui.horizontal_wrapped(|ui| {
+				ui.label("Tasks finished this sprint:");
+				ui.colored_label(Settings::get().theme.get_catppuccin().green, Session::current().current_done_counter.to_string());
+				ui.add_space(8.0);
+				clear_done = ui.button("Clear Done Tasks").clicked();
+			});
 
 			let mut done_cleared = 0;
 
+			ui.add_space(8.0);
+			ui.separator();
 			ui.add_space(8.0);
 
 			show_badge_list(ui, &mut self.filter_list, "Filter");

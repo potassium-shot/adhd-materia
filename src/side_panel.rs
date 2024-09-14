@@ -3,23 +3,21 @@ use std::{collections::HashMap, time::Duration};
 use uuid::Uuid;
 
 use crate::{
-	data_dir::DataDirError,
-	ok_cancel_dialog::{OkCancelDialog, OkCancelResult},
-	scripts::{
+	data_dir::DataDirError, ok_cancel_dialog::{OkCancelDialog, OkCancelResult}, scripts::{
 		badge::BadgeType,
 		filter::{FilterBadgeType, DEFAULT_FILTER_SCRIPT},
 		list::{ScriptEditorDeletionState, ScriptList},
 		sorting::{SortingBadgeType, DEFAULT_SORTING_SCRIPT},
 		standalone_script::{StandaloneScriptBadgeType, DEFAULT_STANDALONE_SCRIPT},
 		PocketPyScript,
-	},
-	settings::{self, AdhdMateriaTheme, Settings, DEFAULT_SCHEDULED_TASK_TAG},
-	task::{
+	}, session::Session, settings::{
+		self, AdhdMateriaTheme, Settings, SprintFrequency, SprintFrequencyKind,
+		DEFAULT_SCHEDULED_TASK_TAG,
+	}, task::{
 		list::{TaskList, TaskListError},
 		scheduled::ScheduledTask,
 		TaskPath,
-	},
-	toast_error,
+	}, toast_error
 };
 
 macro_rules! open_scripts {
@@ -59,6 +57,9 @@ pub enum SidePanel {
 	Scripts {
 		script_list: Result<ScriptList<StandaloneScriptBadgeType>, &'static DataDirError>,
 		interactable: bool,
+	},
+	CompletedTasks {
+		total_completed_tasks: i32,
 	},
 	Settings,
 }
@@ -211,6 +212,33 @@ impl SidePanel {
 					interactable,
 				);
 			}
+			Self::CompletedTasks { total_completed_tasks } => {
+				ui.horizontal(|ui| {
+					ui.heading("Total Completed Tasks:");
+					ui.heading(egui::RichText::new(total_completed_tasks.to_string()).color(Settings::get().theme.get_catppuccin().green))
+				});
+				ui.separator();
+				ui.add_space(16.0);
+				
+				let sprint_list = &Session::current().past_done_counters;
+
+				egui::ScrollArea::vertical().show_rows(ui, 16.0, sprint_list.len(), |ui, range| {
+					egui::Grid::new("sprint_list")
+						.num_columns(1)
+						.striped(true)
+						.spacing((40.0, 4.0))
+						.show(ui, |ui| {
+							let range_start = range.start;
+
+							for (i, sprint) in sprint_list[range].iter().copied().enumerate() {
+								ui.vertical_centered_justified(|ui| {
+									ui.label(format!("Sprint {} - {} tasks completed", sprint_list.len() - (range_start + i), sprint));
+								});
+								ui.end_row();
+							}
+						});
+				});
+			}
 			Self::Settings => {
 				ui.heading("Settings");
 				ui.separator();
@@ -356,6 +384,62 @@ impl SidePanel {
 						ui.label("Done tag name");
 						ui.text_edit_singleline(settings.get_done_tag_string_mut().as_mut());
 						ui.end_row();
+
+						ui.label("Sprints Start");
+						ui.add(egui_extras::DatePickerButton::new(&mut settings.sprint_end_reference));
+						ui.end_row();
+
+						ui.label("Sprint Frequency");
+
+						let mut freq = settings.sprint_end.kind();
+
+						egui::ComboBox::new("sprint_end_freq", "")
+							.selected_text(format!("{}", freq))
+							.show_ui(ui, |ui| {
+								ui.selectable_value(
+									&mut freq,
+									SprintFrequencyKind::Weekly,
+									"Weekly",
+								);
+								ui.selectable_value(
+									&mut freq,
+									SprintFrequencyKind::TwoWeekly,
+									"Two Weekly",
+								);
+								ui.selectable_value(
+									&mut freq,
+									SprintFrequencyKind::Monthly,
+									"Monthly",
+								);
+								ui.selectable_value(
+									&mut freq,
+									SprintFrequencyKind::Custom,
+									"Custom",
+								);
+							});
+						
+						settings.sprint_end = match freq {
+								SprintFrequencyKind::Weekly => SprintFrequency::Weekly,
+								SprintFrequencyKind::TwoWeekly => SprintFrequency::TwoWeekly,
+								SprintFrequencyKind::Monthly => SprintFrequency::Monthly,
+								SprintFrequencyKind::Custom => {
+									let mut days = if let SprintFrequency::Custom { days } = settings.sprint_end {
+										days
+									} else {
+										7
+									};
+
+									ui.end_row();
+									ui.label("Sprint Frequency Days");
+									ui.add(egui::DragValue::new(&mut days));
+
+									SprintFrequency::Custom {
+										days,
+									}
+								}
+							};
+
+						ui.end_row();
 					});
 			}
 		}
@@ -395,6 +479,12 @@ impl SidePanel {
 			SidePanelKind::FilterScripts => open_scripts!(FilterBadgeType, FilterScripts),
 			SidePanelKind::SortingScripts => open_scripts!(SortingBadgeType, SortingScripts),
 			SidePanelKind::Scripts => open_scripts!(StandaloneScriptBadgeType, Scripts),
+			SidePanelKind::CompletedTasks => {
+				let session = Session::current();
+				Self::CompletedTasks {
+					total_completed_tasks: session.past_done_counters.iter().copied().sum::<i32>() + session.current_done_counter,
+				}
+			},
 			SidePanelKind::Settings => Self::Settings,
 			SidePanelKind::Hidden => Self::Hidden,
 		}
@@ -402,8 +492,8 @@ impl SidePanel {
 
 	fn close(&mut self) {
 		match self {
-			SidePanel::Hidden => {}
-			SidePanel::ScheduledTasks {
+			Self::Hidden => {}
+			Self::ScheduledTasks {
 				scheduled_task_list,
 				..
 			} => {
@@ -411,16 +501,17 @@ impl SidePanel {
 					list.save_all();
 				}
 			}
-			SidePanel::FilterScripts { script_list, .. } => {
+			Self::FilterScripts { script_list, .. } => {
 				close_scripts(script_list, "Filter");
 			}
-			SidePanel::SortingScripts { script_list, .. } => {
+			Self::SortingScripts { script_list, .. } => {
 				close_scripts(script_list, "Sorting");
 			}
-			SidePanel::Scripts { script_list, .. } => {
+			Self::Scripts { script_list, .. } => {
 				close_scripts(script_list, "Standalone");
 			}
-			SidePanel::Settings => {
+			Self::CompletedTasks { .. } => {}
+			Self::Settings => {
 				let mut settings = Settings::get();
 				settings.default_task.apply_tags();
 
