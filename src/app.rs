@@ -219,117 +219,142 @@ impl App for AdhdMateriaApp {
 				.min_width(384.0)
 				.default_width(576.0)
 				.show_animated(ctx, self.selected_task.is_some(), |ui| {
-					let selected_task_id = self.selected_task.as_ref().expect("is some").uuid.clone();
-					let selected_task = if let Some(selected_task) = task_list
-						.get_mut(&selected_task_id) {
-						selected_task
-					} else {
-						self.selected_task = None;
-						return;
-					};
+					ui.add_enabled_ui(self.interactable, |ui| {
+						if !self.interactable {
+							ui.multiply_opacity(0.25);
+						}
 
-					ui.horizontal(|ui| {
-						ui.heading(selected_task.name.as_str());
-						if ui.button("➡").clicked() {
+						let selected_task_id = self.selected_task.as_ref().expect("is some").uuid.clone();
+						let selected_task = if let Some(selected_task) = task_list
+							.get_mut(&selected_task_id) {
+							selected_task
+						} else {
 							self.selected_task = None;
+							return;
+						};
+
+						ui.horizontal(|ui| {
+							ui.heading(selected_task.name.as_str());
+							if ui.button("➡").clicked() {
+								self.selected_task = None;
+							}
+						});
+
+						if self.selected_task.is_none() {
+							return;
 						}
-					});
 
-					if self.selected_task.is_none() {
-						return;
-					}
+						ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+							if ui.small_button("📋").clicked() {
+								ui.output_mut(|o| {
+									o.copied_text = selected_task.get_uuid().to_string();
+								});
+							}
 
-					ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-						if ui.small_button("📋").clicked() {
-							ui.output_mut(|o| {
-								o.copied_text = selected_task.get_uuid().to_string();
-							});
-						}
+							ui.small(
+								egui::RichText::new(selected_task.get_uuid().to_string())
+									.weak()
+									.monospace(),
+							);
+						});
+						ui.separator();
+						ui.add_space(8.0);
 
-						ui.small(
-							egui::RichText::new(selected_task.get_uuid().to_string())
-								.weak()
-								.monospace(),
-						);
-					});
-					ui.separator();
-					ui.add_space(8.0);
+						ui.label(selected_task.description.as_str());
 
-					ui.label(selected_task.description.as_str());
+						ui.add_space(8.0);
+						ui.separator();
+						ui.add_space(8.0);
 
-					ui.add_space(8.0);
-					ui.separator();
-					ui.add_space(8.0);
+						ui.horizontal_wrapped(|ui| {
+							for tag in selected_task.tags.iter_mut() {
+								tag.widget(false).show(ui, &self.task_name_cache, &mut self.scroll_to_task);
+								ui.add_space(8.0);
+							}
+						});
 
-					ui.horizontal_wrapped(|ui| {
-						for tag in selected_task.tags.iter_mut() {
-							tag.widget(false).show(ui, &self.task_name_cache, &mut self.scroll_to_task);
-							ui.add_space(8.0);
-						}
-					});
+						ui.separator();
+						ui.add_space(8.0);
 
-					ui.separator();
-					ui.add_space(8.0);
+						ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
+							egui::ScrollArea::vertical()
+								.auto_shrink(false)
+								.show(ui, |ui| {
+									egui::Grid::new("subtask_grid")
+										.num_columns(1)
+										.spacing((40.0, 12.0))
+										.striped(true)
+										.show(ui, |ui| {
+											let mut to_select = None;
 
-					ui.with_layout(egui::Layout::top_down_justified(egui::Align::TOP), |ui| {
-						egui::ScrollArea::vertical()
-							.auto_shrink(false)
-							.show(ui, |ui| {
-								egui::Grid::new("subtask_grid")
-									.num_columns(1)
-									.spacing((40.0, 12.0))
-									.striped(true)
-									.show(ui, |ui| {
-										let mut to_select = None;
+											for task_id in self.selected_task.as_ref().unwrap().display_list.tasks() {
+												let task = task_list.get_mut(task_id).expect("task display list should only have valid uuids");
+												if task.is_subtask_of(&selected_task_id) {
+													let task_widget_response =
+														task.widget().show(ui, &self.task_name_cache, selected_task_id == *task_id, &mut self.scroll_to_task);
 
-										for task_id in self.selected_task.as_ref().unwrap().display_list.tasks() {
-											let task = task_list.get_mut(task_id).expect("task display list should only have valid uuids");
-											if task.is_subtask_of(&selected_task_id) {
-												let task_widget_response =
-													task.widget().show(ui, &self.task_name_cache, selected_task_id == *task_id, &mut self.scroll_to_task);
+													update_required |= task_widget_response.changed;
 
-												update_required |= task_widget_response.changed;
+													if task.is_pending_delete() {
+														self.interactable = false;
 
-												if task_widget_response.selected {
-													if let Ok(filter_list) = self.filter_list.as_ref() {
-														if let Ok(sorting_list) = self.sorting_list.as_ref() {
-															if self.selected_task.as_ref().is_some_and(|s| s.uuid == *task_id)
-															{
-																to_select = Some(None);
-															} else {
-																to_select =
-																	Some(Some(SelectedTask::new(task_id.clone(), task_list, filter_list, sorting_list)));
+														if let Some(result) = OkCancelDialog::default()
+															.with_title(format!("Delete task {}?", task.name))
+															.with_subtext("You cannot undo this action.")
+															.with_ok_text("Delete")
+															.with_ok_color(ui.style().visuals.error_fg_color)
+															.show(ctx)
+														{
+															self.interactable = true;
+
+															match result {
+																OkCancelResult::Ok => task.mark_for_delete(),
+																OkCancelResult::Cancel => task.edit(),
 															}
 														}
 													}
+
+													if task_widget_response.selected {
+														if let Ok(filter_list) = self.filter_list.as_ref() {
+															if let Ok(sorting_list) = self.sorting_list.as_ref() {
+																if self.selected_task.as_ref().is_some_and(|s| s.uuid == *task_id)
+																{
+																	to_select = Some(None);
+																} else {
+																	to_select =
+																		Some(Some(SelectedTask::new(task_id.clone(), task_list, filter_list, sorting_list)));
+																}
+															}
+														}
+													}
+
+													ui.end_row();
 												}
-
-												ui.end_row();
 											}
+
+											if let Some(to_select) = to_select {
+												self.selected_task = to_select;
+											}
+										});
+
+									ui.add_space(16.0);
+
+									if ui.button("New Subtask").clicked() {
+										let mut new_task = Settings::get().default_task.clone();
+										new_task.new_uuid();
+										new_task.tags.push(Tag::new(
+											String::from("subtask_of"),
+											Some(TagValue::TaskReference(selected_task_id.clone())),
+										));
+										new_task.edit();
+
+										if let Err(e) = task_list.add_task(new_task) {
+											toast_error!("Could not create task: {}", e);
 										}
 
-										if let Some(to_select) = to_select {
-											self.selected_task = to_select;
-										}
-									});
-
-								ui.add_space(16.0);
-
-								if ui.button("New Subtask").clicked() {
-									let mut new_task = Settings::get().default_task.clone();
-									new_task.new_uuid();
-									new_task.tags.push(Tag::new(
-										String::from("subtask_of"),
-										Some(TagValue::TaskReference(selected_task_id.clone())),
-									));
-									new_task.edit();
-
-									if let Err(e) = task_list.add_task(new_task) {
-										toast_error!("Could not create task: {}", e);
+										update_required = true;
 									}
-
-									update_required = true;
-								}
+								});
 							});
 					});
 				});
@@ -373,8 +398,6 @@ impl App for AdhdMateriaApp {
 					ui.multiply_opacity(0.25);
 				}
 
-				self.interactable = true;
-
 				let selected_task = self.selected_task.as_ref().map(|s| s.uuid.clone());
 				let scroll_to = self.scroll_to_task.take();
 
@@ -404,6 +427,8 @@ impl App for AdhdMateriaApp {
 													.with_ok_color(ui.style().visuals.error_fg_color)
 													.show(ctx)
 												{
+													self.interactable = true;
+
 													match result {
 														OkCancelResult::Ok => task.mark_for_delete(),
 														OkCancelResult::Cancel => task.edit(),
