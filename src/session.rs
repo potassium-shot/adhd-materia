@@ -32,7 +32,34 @@ impl Default for Session {
 
 impl Session {
 	pub fn load() -> Result<Self, SessionError> {
-		Ok(std::fs::read_to_string(crate::data_dir()?.session())?.parse()?)
+		let data_dir = crate::data_dir()?;
+		let session_path = data_dir.session();
+
+		if !session_path.exists() {
+			let mut session = Self::default();
+
+			// Write default filters/sortings
+			std::fs::write(
+				data_dir.filter_scripts().join("default_filter.py"),
+				include_str!("../assets/filter_default.py"),
+			)?;
+			std::fs::write(
+				data_dir.filter_scripts().join("only_undone.py"),
+				include_str!("../assets/filter_only_undone.py"),
+			)?;
+			std::fs::write(
+				data_dir.sorting_scripts().join("by_priority.py"),
+				include_str!("../assets/sorting_by_priority.py"),
+			)?;
+
+			// Set some of these
+			session.set_filters.push(String::from("default_filter"));
+			session.set_sortings.push(String::from("by_priority"));
+
+			return Ok(session);
+		}
+
+		Ok(std::fs::read_to_string(session_path)?.parse()?)
 	}
 
 	pub fn save(&self) -> Result<(), SessionError> {
