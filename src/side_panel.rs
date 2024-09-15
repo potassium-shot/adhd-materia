@@ -66,6 +66,20 @@ pub enum SidePanel {
 	},
 }
 
+impl SidePanelKind {
+	pub fn name(&self) -> &'static str {
+		match self {
+			SidePanelKind::Hidden => "",
+			SidePanelKind::ScheduledTasks => "Scheduled Tasks",
+			SidePanelKind::FilterScripts => "Filter Scripts",
+			SidePanelKind::SortingScripts => "Sorting Scripts",
+			SidePanelKind::Scripts => "Scripts",
+			SidePanelKind::CompletedTasks => "Completed Tasks",
+			SidePanelKind::Settings => "Settings",
+		}
+	}
+}
+
 impl SidePanel {
 	pub fn show(
 		&mut self,
@@ -335,11 +349,18 @@ impl SidePanel {
 					.show(ui, |ui| {
 						let mut settings = Settings::get();
 
-						ui.label("Help messages");
+						ui.label("Help messages").on_hover_ui(|ui| {
+							ui.horizontal(|ui| {
+								ui.label("Shows");
+								ui.colored_label(settings.theme.get_catppuccin().blue, "ℹ help messages");
+							});
+						});
 						ui.add(egui::Checkbox::without_text(&mut settings.help_messages));
 						ui.end_row();
 
-						ui.label("Theme");
+						ui.label("Theme").on_hover_text(
+							"Selects the theme. Currently only Catppuccin themes are hardcoded, but custom themes should be supported in the future."
+						);
 
 						if egui::ComboBox::from_id_source("theme_selector")
 							.selected_text(format!("{}", settings.theme))
@@ -387,11 +408,14 @@ impl SidePanel {
 
 						settings.default_task.edit_no_buttons();
 
-						ui.label("Default task");
+						ui.label("Default task").on_hover_text("Newly created tasks will look like this");
 						settings.default_task.widget().show(ui, task_names, false, scroll_to, selected_task);
 						ui.end_row();
 
-						ui.label("Repeating task rewind");
+						ui.label("Repeating task rewind").on_hover_text(
+							"When a repeating task should have triggered more than once, \
+							One will make it trigger once, and All will make it trigger all times",
+						);
 						egui::ComboBox::from_id_source("repeatable_rewind")
 							.selected_text(format!("{:?}", settings.repeatable_rewind))
 							.show_ui(ui, |ui| {
@@ -405,17 +429,10 @@ impl SidePanel {
 									settings::RepeatableRewind::All,
 									"All",
 								);
-							})
-							.response
-							.on_hover_ui(|ui| {
-								ui.label(
-									"When a repeating task should have triggered more than once, \
-									One will make it trigger once, and All will make it trigger all times",
-								);
 							});
 						ui.end_row();
 
-						ui.label("Scheduled task tag");
+						ui.label("Scheduled task tag").on_hover_text("Tag to apply to scheduled tasks, $DATE is replaced by the scheduled date");
 
 						ui.horizontal(|ui| {
 							let mut scheduled_task_tag_enabled =
@@ -429,10 +446,7 @@ impl SidePanel {
 							ui.add_enabled(
 								scheduled_task_tag_enabled,
 								egui::TextEdit::singleline(&mut scheduled_task_tag),
-							)
-							.on_hover_ui(|ui| {
-								ui.label("Tag to apply to scheduled tasks, $DATE is replaced by the scheduled date");
-							});
+							);
 
 							if let Some(tag) = &mut settings.scheduled_task_tag {
 								*tag = scheduled_task_tag;
@@ -450,18 +464,17 @@ impl SidePanel {
 
 						ui.end_row();
 
-						ui.label("Delete used scheduled tasks");
+						ui.label("Delete used scheduled tasks").on_hover_text(
+							"Delete scheduled tasks that have been used and are never to be triggered again."
+						);
 						ui.add(egui::Checkbox::without_text(
 							&mut settings.delete_used_scheduled_tasks,
-						))
-						.on_hover_ui(|ui| {
-							ui.label("Delete scheduled tasks that have been used and are never to be triggered again.");
-						});
+						));
 						ui.end_row();
 
 						ui.horizontal(|ui| {
-							ui.label("Date format");
-							if ui.link(egui::RichText::new("reference").color(ui.visuals().hyperlink_color)).clicked() {
+							ui.label("Date format,");
+							if ui.link(egui::RichText::new("see reference").color(ui.visuals().hyperlink_color)).clicked() {
 								ui.output_mut(|o| {
 									o.open_url = Some(egui::OpenUrl::new_tab("https://docs.rs/chrono/latest/chrono/format/strftime/index.html"));
 								});
@@ -470,11 +483,11 @@ impl SidePanel {
 						ui.text_edit_singleline(&mut settings.date_format);
 						ui.end_row();
 
-						ui.label("Sprints Start");
+						ui.label("Sprints Start").on_hover_text("Sprint start/reference date.");
 						ui.add(egui_extras::DatePickerButton::new(&mut settings.sprint_end_reference));
 						ui.end_row();
 
-						ui.label("Sprint Frequency");
+						ui.label("Sprint Frequency").on_hover_text("Frequency of sprints. Repeats start from the Sprint Start date.");
 
 						let mut freq = settings.sprint_end.kind();
 
@@ -526,7 +539,9 @@ impl SidePanel {
 
 						ui.end_row();
 
-						ui.label("Name colors");
+						ui.label("Name colors").on_hover_text(
+							"Associates a color to tag/filter/sorting names. Names that aren't in here will have a random color."
+						);
 						ui.collapsing("Associations", |ui| {
 							egui::Grid::new("color_assoc")
 								.striped(true)

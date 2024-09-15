@@ -267,7 +267,8 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 							ui.with_layout(
 								egui::Layout::right_to_left(egui::Align::BOTTOM),
 								|ui| {
-									if ui.small_button("📋").clicked() {
+									if ui.small_button("📋").on_hover_text("Copy UUID").clicked()
+									{
 										ui.output_mut(|o| {
 											o.copied_text = self.task.get_uuid().to_string();
 										});

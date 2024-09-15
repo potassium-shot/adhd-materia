@@ -157,7 +157,7 @@ impl App for AdhdMateriaApp {
 				ui.vertical_centered_justified(|ui| {
 					let mut side_panel_button =
 						|ui: &mut egui::Ui, kind: SidePanelKind, c: char| {
-							if ui
+							let response = ui
 								.add(
 									egui::Button::new(
 										egui::RichText::from(c.to_string()).size(32.0).color(
@@ -173,11 +173,14 @@ impl App for AdhdMateriaApp {
 										),
 									)
 									.frame(false),
-								)
-								.clicked()
+								);
+							
+							if response.clicked()
 							{
 								self.side_panel.toggle(kind);
 							}
+							
+							response.on_hover_text(kind.name());
 						};
 
 					side_panel_button(ui, SidePanelKind::ScheduledTasks, '🕗');
@@ -247,7 +250,7 @@ impl App for AdhdMateriaApp {
 						}
 
 						ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-							if ui.small_button("📋").clicked() {
+							if ui.small_button("📋").on_hover_text("Copy UUID").clicked() {
 								ui.output_mut(|o| {
 									o.copied_text = selected_task.get_uuid().to_string();
 								});
