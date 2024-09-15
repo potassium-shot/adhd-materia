@@ -1,4 +1,5 @@
 use std::{
+	collections::HashMap,
 	str::FromStr,
 	sync::{LazyLock, Mutex, MutexGuard},
 };
@@ -14,6 +15,8 @@ pub const DEFAULT_DATE_FORMAT: &str = "%a. %-d %b. %Y";
 static SETTINGS: LazyLock<Mutex<Settings>> =
 	LazyLock::new(|| Mutex::new(Settings::load().unwrap_or_default()));
 
+static COLORHASH: LazyLock<colorhash::ColorHash> = LazyLock::new(|| colorhash::ColorHash::new());
+
 #[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct Settings {
@@ -25,6 +28,7 @@ pub struct Settings {
 	pub date_format: String,
 	pub sprint_end_reference: chrono::NaiveDate,
 	pub sprint_end: SprintFrequency,
+	pub color_associations: HashMap<String, egui::Color32>,
 }
 
 impl Default for Settings {
@@ -38,6 +42,26 @@ impl Default for Settings {
 			date_format: String::from(DEFAULT_DATE_FORMAT),
 			sprint_end_reference: chrono::Local::now().date_naive(),
 			sprint_end: SprintFrequency::default(),
+			color_associations: {
+				let mut map = HashMap::new();
+				map.insert(
+					String::from("done"),
+					egui::Color32::from_rgb(0x20, 0xF0, 0x20),
+				);
+				map.insert(
+					String::from("only_undone"),
+					egui::Color32::from_rgb(0x20, 0xF0, 0x20),
+				);
+				map.insert(
+					String::from("priority"),
+					egui::Color32::from_rgb(0xF0, 0xA0, 0x10),
+				);
+				map.insert(
+					String::from("by_priority"),
+					egui::Color32::from_rgb(0xF0, 0xA0, 0x10),
+				);
+				map
+			},
 		}
 	}
 }
@@ -215,6 +239,20 @@ impl Settings {
 
 	pub fn get() -> MutexGuard<'static, Self> {
 		SETTINGS.lock().expect("Settings should be lockable")
+	}
+
+	pub fn get_color(&self, name: &str) -> egui::Color32 {
+		self.color_associations
+			.get(name)
+			.cloned()
+			.unwrap_or_else(|| {
+				let col_hash = COLORHASH.rgb(name);
+				egui::Color32::from_rgb(
+					col_hash.red() as u8,
+					col_hash.green() as u8,
+					col_hash.blue() as u8,
+				)
+			})
 	}
 }
 

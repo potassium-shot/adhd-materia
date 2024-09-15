@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::collections::HashMap;
 
 use convert_case::Casing;
 use uuid::Uuid;
@@ -10,19 +10,8 @@ use crate::{
 
 use super::{Tag, TagValue};
 
-static COLORHASH: LazyLock<colorhash::ColorHash> = LazyLock::new(|| colorhash::ColorHash::new());
-
 fn get_tag_color(tag: &Tag) -> egui::Color32 {
-	if tag.name.as_str() == "done" {
-		egui::Color32::from_rgb(0x20, 0xF0, 0x20)
-	} else {
-		let col_hash = COLORHASH.rgb(&tag.name);
-		egui::Color32::from_rgb(
-			col_hash.red() as u8,
-			col_hash.green() as u8,
-			col_hash.blue() as u8,
-		)
-	}
+	Settings::get().get_color(&tag.name)
 }
 
 pub struct TagWidget<'tag> {

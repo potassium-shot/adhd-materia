@@ -61,7 +61,9 @@ pub enum SidePanel {
 	CompletedTasks {
 		total_completed_tasks: i32,
 	},
-	Settings,
+	Settings {
+		color_associations_cache: Vec<(String, egui::epaint::Hsva)>,
+	},
 }
 
 impl SidePanel {
@@ -240,7 +242,7 @@ impl SidePanel {
 						});
 				});
 			}
-			Self::Settings => {
+			Self::Settings { color_associations_cache } => {
 				ui.heading("Settings");
 				ui.separator();
 				ui.add_space(16.0);
@@ -437,6 +439,37 @@ impl SidePanel {
 							};
 
 						ui.end_row();
+
+						ui.label("Name colors");
+						ui.collapsing("Associations", |ui| {
+							egui::Grid::new("color_assoc")
+								.striped(true)
+								.num_columns(2)
+								.show(ui, |ui| {
+									let mut to_remove = Vec::new();
+
+									for (i, (name, color)) in color_associations_cache.iter_mut().enumerate() {
+										ui.text_edit_singleline(name);
+										ui.color_edit_button_hsva(color);
+										
+										if ui.button("X").clicked() {
+											to_remove.push(i);
+										}
+
+										ui.end_row();
+									}
+
+									for i in to_remove.into_iter().rev() {
+										color_associations_cache.remove(i);
+									}
+								});
+
+							ui.vertical_centered_justified(|ui| {
+								if ui.button("+").clicked() {
+									color_associations_cache.push((String::from("name"), egui::epaint::Hsva::new(0.0, 0.8, 0.8, 1.0)));
+								}
+							});
+						});
 					});
 			}
 		}
@@ -482,7 +515,9 @@ impl SidePanel {
 					total_completed_tasks: session.past_done_counters.iter().copied().sum::<i32>() + session.current_done_counter,
 				}
 			},
-			SidePanelKind::Settings => Self::Settings,
+			SidePanelKind::Settings => Self::Settings {
+				color_associations_cache: Settings::get().color_associations.iter().map(|(name, color)| (name.clone(), egui::epaint::Hsva::from_srgba_premultiplied(color.to_array()))).collect(),
+			},
 			SidePanelKind::Hidden => Self::Hidden,
 		}
 	}
@@ -508,9 +543,14 @@ impl SidePanel {
 				close_scripts(script_list, "Standalone");
 			}
 			Self::CompletedTasks { .. } => {}
-			Self::Settings => {
+			Self::Settings { color_associations_cache } => {
 				let mut settings = Settings::get();
 				settings.default_task.apply_tags();
+
+				settings.color_associations = color_associations_cache.iter_mut().map(|(name, color)| {
+					let rgb = color.to_srgb();
+					(name.clone(), egui::Color32::from_rgb(rgb[0], rgb[1], rgb[2]))
+				}).collect();
 
 				if let Err(e) = settings.save() {
 					crate::toasts()

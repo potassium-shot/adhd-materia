@@ -1,10 +1,9 @@
-use std::sync::LazyLock;
-
 use convert_case::Casing;
 
 use crate::{
 	data_dir::{DataDir, DataDirError},
 	session::Session,
+	settings::Settings,
 	toast_error,
 };
 
@@ -12,9 +11,6 @@ use super::{
 	list::{ScriptEditor, ScriptEditorStateKind, ScriptList},
 	PocketPyScript,
 };
-
-static BADGES_COLOR_HASH: LazyLock<colorhash::ColorHash> =
-	LazyLock::new(|| colorhash::ColorHash::new());
 
 pub struct Badge<'list, 'pressed, T> {
 	pressed: &'pressed mut bool,
@@ -40,9 +36,7 @@ impl<T: BadgeType> egui::Widget for Badge<'_, '_, T> {
 			let mut layout_job = egui::text::LayoutJob::default();
 
 			if *self.pressed {
-				let col = BADGES_COLOR_HASH.rgb(self.script_name);
-				let col =
-					egui::Color32::from_rgb(col.red() as u8, col.green() as u8, col.blue() as u8);
+				let col = Settings::get().get_color(self.script_name);
 
 				let mut new_stroke = ui.visuals_mut().widgets.hovered.bg_stroke;
 				new_stroke.color = col;
