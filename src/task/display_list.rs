@@ -2,9 +2,12 @@ use std::cmp::Ordering;
 
 use uuid::Uuid;
 
-use crate::{scripts::{
-	filter::FilterList, sorting::SortingList, value::AnyIntoPocketPyValue, PocketPyScript,
-}, toast_error};
+use crate::{
+	scripts::{
+		filter::FilterList, sorting::SortingList, value::AnyIntoPocketPyValue, PocketPyScript,
+	},
+	toast_error,
+};
 
 use super::{list::TaskList, Task};
 

@@ -200,7 +200,9 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 
 										if ui.button(egui::RichText::new("✅").size(20.0)).clicked()
 										{
-											self.task.tags.insert(0, Tag::new(String::from("done"), None));
+											self.task
+												.tags
+												.insert(0, Tag::new(String::from("done"), None));
 
 											if let Err(e) = self.task.save(path) {
 												toast_error!("Could not save task: {}", e);
@@ -354,6 +356,7 @@ impl<T: TaskTypeData> TaskWidget<'_, T> {
 										.clicked()
 									{
 										tags_to_remove.push(i);
+										response.changed = true;
 									}
 
 									ui.add_space(8.0);
