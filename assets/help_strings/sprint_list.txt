@@ -1,0 +1,1 @@
+This is a list of your completed sprints. The duration and starting point of these sprints can be configured in the [⛭ Settings]0.

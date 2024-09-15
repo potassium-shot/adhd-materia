@@ -20,6 +20,7 @@ static COLORHASH: LazyLock<colorhash::ColorHash> = LazyLock::new(|| colorhash::C
 #[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct Settings {
+	pub help_messages: bool,
 	pub theme: AdhdMateriaTheme,
 	pub default_task: Task,
 	pub repeatable_rewind: RepeatableRewind,
@@ -34,6 +35,7 @@ pub struct Settings {
 impl Default for Settings {
 	fn default() -> Self {
 		Self {
+			help_messages: true,
 			theme: AdhdMateriaTheme::default(),
 			default_task: Task::default(),
 			repeatable_rewind: RepeatableRewind::default(),

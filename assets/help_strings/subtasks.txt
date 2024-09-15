@@ -1,0 +1,1 @@
+This is the list of subtasks. A task that has the `subtask_of(<uuid of task Foo>)` tag will be a subtask of Foo. Tasks created here will automatically be given this tag. The uuid of a task can be found at its bottom right corner.

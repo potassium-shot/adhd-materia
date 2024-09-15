@@ -1,0 +1,1 @@
+This is the list of filter scripts. These are displayed as badges over the task list, and can be enabled and disabled. Their purpose is to hide tasks based on a condition.

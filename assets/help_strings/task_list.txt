@@ -1,0 +1,1 @@
+This is a list of today's tasks. Tasks can be made manually, or then can be scheduled using the [🕗 Task Scheduler]0 tab. Tasks can also be created by using [📃 Scripts]1.

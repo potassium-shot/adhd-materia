@@ -1,0 +1,1 @@
+Sorting scripts are functions that receive 1 parameter: `task`, the task to sort. It should return an `int` or a `float` number. Lower numbers are sorted first.

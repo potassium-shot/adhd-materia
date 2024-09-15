@@ -1,0 +1,1 @@
+This is the list of sorting scripts. These are displayed as badges over the task list, and can be enabled and disabled in order. They tell in which order to sort tasks. When you have more than one active at the time, The first one is used, and if some tasks are still at the same sorting priority, the next one is used, on and on.

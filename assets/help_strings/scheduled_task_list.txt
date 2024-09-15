@@ -1,0 +1,1 @@
+This is the list of scheduled tasks. You can schedule them for a specific date, and you can also enable repeats. Repeats will always occur after the scheduled date, and use it as a point of reference.

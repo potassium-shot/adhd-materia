@@ -1,0 +1,1 @@
+Example: To make a task repeat every monday, select any past date that is a monday, and set the repeat mode to Weekly.

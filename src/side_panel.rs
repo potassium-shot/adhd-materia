@@ -3,7 +3,7 @@ use std::{collections::HashMap, time::Duration};
 use uuid::Uuid;
 
 use crate::{
-	data_dir::DataDirError, ok_cancel_dialog::{OkCancelDialog, OkCancelResult}, scripts::{
+	data_dir::DataDirError, help_string, ok_cancel_dialog::{OkCancelDialog, OkCancelResult}, scripts::{
 		badge::BadgeType,
 		filter::{FilterBadgeType, DEFAULT_FILTER_SCRIPT},
 		list::{ScriptEditorDeletionState, ScriptList},
@@ -74,6 +74,8 @@ impl SidePanel {
 		scroll_to: &mut Option<Uuid>,
 		selected_task: &mut Option<Uuid>,
 	) {
+		ui.add_space(8.0);
+
 		match self {
 			Self::Hidden => {}
 			Self::ScheduledTasks {
@@ -82,7 +84,12 @@ impl SidePanel {
 			} => {
 				ui.heading("Scheduled Tasks");
 				ui.separator();
-				ui.add_space(16.0);
+				ui.add_space(8.0);
+
+				help_string!(ui, "scheduled_task_list");
+				help_string!(ui, "scheduled_task_list_2");
+
+				ui.add_space(8.0);
 
 				ui.add_enabled_ui(*interactable, |ui| {
 					if !*interactable {
@@ -183,6 +190,23 @@ impl SidePanel {
 				script_list,
 				interactable,
 			} => {
+				ui.heading("Filter Scripts");
+				ui.separator();
+				ui.add_space(8.0);
+
+				help_string!(ui, "filter_scripts");
+				help_string!(ui, "filter_scripts_2");
+
+				match help_string!(ui, "other_scripts") {
+					Some(0) => {
+						self.open(SidePanelKind::Scripts);
+						return;
+					}
+					_ => {}
+				}
+
+				ui.add_space(8.0);
+
 				show_scripts(
 					ui,
 					script_list,
@@ -195,6 +219,23 @@ impl SidePanel {
 				script_list,
 				interactable,
 			} => {
+				ui.heading("Sorting Scripts");
+				ui.separator();
+				ui.add_space(8.0);
+
+				help_string!(ui, "sorting_scripts");
+				help_string!(ui, "sorting_scripts_2");
+
+				match help_string!(ui, "other_scripts") {
+					Some(0) => {
+						self.open(SidePanelKind::Scripts);
+						return;
+					}
+					_ => {}
+				}
+
+				ui.add_space(8.0);
+
 				show_scripts(
 					ui,
 					script_list,
@@ -207,6 +248,33 @@ impl SidePanel {
 				script_list,
 				interactable,
 			} => {
+				ui.heading("Standalone Scripts");
+				ui.separator();
+				ui.add_space(8.0);
+
+				match help_string!(ui, "scripts") {
+					Some(0) => {
+						self.open(SidePanelKind::FilterScripts);
+						return;
+					}
+					Some(1) => {
+						self.open(SidePanelKind::SortingScripts);
+						return;
+					}
+					_ => {}
+				}
+
+				match help_string!(ui, "scripts_2") {
+					Some(0) => {
+						ui.output_mut(|o| {
+							o.open_url = Some(egui::OpenUrl::new_tab("https://github.com/potassium-shot/adhd-materia"));
+						});
+					}
+					_ => {}
+				}
+
+				ui.add_space(8.0);
+
 				show_scripts(
 					ui,
 					script_list,
@@ -221,7 +289,17 @@ impl SidePanel {
 					ui.heading(egui::RichText::new(total_completed_tasks.to_string()).color(Settings::get().theme.get_catppuccin().green))
 				});
 				ui.separator();
-				ui.add_space(16.0);
+				ui.add_space(8.0);
+
+				match help_string!(ui, "sprint_list") {
+					Some(0) => {
+						self.open(SidePanelKind::Settings);
+						return;
+					},
+					_ => {}
+				}
+
+				ui.add_space(8.0);
 				
 				let sprint_list = &Session::current().past_done_counters;
 
@@ -245,13 +323,21 @@ impl SidePanel {
 			Self::Settings { color_associations_cache } => {
 				ui.heading("Settings");
 				ui.separator();
-				ui.add_space(16.0);
+				ui.add_space(8.0);
+
+				help_string!(ui, "settings");
+
+				ui.add_space(8.0);
 
 				egui::Grid::new("settings_list")
 					.num_columns(2)
 					.spacing((40.0, 8.0))
 					.show(ui, |ui| {
 						let mut settings = Settings::get();
+
+						ui.label("Help messages");
+						ui.add(egui::Checkbox::without_text(&mut settings.help_messages));
+						ui.end_row();
 
 						ui.label("Theme");
 
@@ -588,10 +674,6 @@ fn show_scripts<T: BadgeType>(
 	interactable: &mut bool,
 ) {
 	ui.add_enabled_ui(*interactable, |ui| {
-		ui.heading(format!("{} Scripts", script_name));
-		ui.separator();
-		ui.add_space(16.0);
-
 		match script_list {
 			Ok(script_list) => {
 				egui::ScrollArea::vertical()

@@ -1,0 +1,1 @@
+Scripts are python scripts that run over PocketPy. Standalone scripts can be run on their own, or can be run from other scripts using the `run_standalone_scripts` function. If a standalone script is called "autorun", it will be run every launch. Also see [🔻 Filter Scripts]0 and [🔤 Sorting Scripts]1.

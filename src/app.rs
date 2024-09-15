@@ -8,7 +8,7 @@ use eframe::{App, CreationContext};
 use uuid::Uuid;
 
 use crate::{
-	data_dir::DataDirError, handle_toast_error, ok_cancel_dialog::{OkCancelDialog, OkCancelResult}, scripts::{
+	data_dir::DataDirError, handle_toast_error, help_string, ok_cancel_dialog::{OkCancelDialog, OkCancelResult}, scripts::{
 		badge::{BadgeList, BadgeType},
 		filter::FilterList,
 		sorting::SortingList,
@@ -196,7 +196,7 @@ impl App for AdhdMateriaApp {
 
 		egui::SidePanel::left("left_panel")
 			.min_width(192.0)
-			.default_width(384.0)
+			.default_width(400.0)
 			.show_animated(ctx, self.side_panel.is_shown(), |ui| {
 				self.side_panel.show(ui, &self.task_name_cache, &mut self.scroll_to_task, &mut to_select);
 			});
@@ -260,6 +260,10 @@ impl App for AdhdMateriaApp {
 							);
 						});
 						ui.separator();
+						ui.add_space(8.0);
+
+						help_string!(ui, "subtasks");
+
 						ui.add_space(8.0);
 
 						ui.label(selected_task.description.as_str());
@@ -353,13 +357,13 @@ impl App for AdhdMateriaApp {
 
 		egui::CentralPanel::default().show(ctx, |ui| {
 			ui.heading("Task List");
-			ui.horizontal_wrapped(|ui| {
-				ui.label("This is a list of today's tasks. Tasks can be made manually, or then can be scheduled using the");
-				if ui.link(egui::RichText::from("🕗 Task Scheduler").color(ui.style().visuals.hyperlink_color)).clicked() {
-					self.side_panel.open(SidePanelKind::ScheduledTasks);
-				}
-				ui.label("tab.");
-			});
+
+			match help_string!(ui, "task_list") {
+				Some(0) => self.side_panel.open(SidePanelKind::ScheduledTasks),
+				Some(1) => self.side_panel.open(SidePanelKind::Scripts),
+				_ => {}
+			}
+
 			ui.separator();
 			ui.add_space(8.0);
 

@@ -1,0 +1,1 @@
+Filter scripts are functions that receive 2 parameters: `task`, the task that should or should not be filtered, and `parent` a reference to the parent task if `task` is viewed from within a parent task. Otherwise it is `None`. This function should return `True` to show the task, and `False` to hide it.
