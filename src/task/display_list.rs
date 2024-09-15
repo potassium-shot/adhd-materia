@@ -24,7 +24,7 @@ impl TaskDisplayList {
 	) -> Self {
 		let task_list: Vec<&Task> = task_list.tasks().collect();
 		let mut task_passes = vec![true; task_list.len()];
-		let mut task_orderings: Vec<Vec<i64>> = Vec::new();
+		let mut task_orderings: Vec<Vec<f64>> = Vec::new();
 
 		match crate::data_dir() {
 			Ok(data_dir) => {
@@ -87,7 +87,7 @@ impl TaskDisplayList {
 							.join(sorting_script_name)
 							.with_extension("py"),
 					) {
-						Ok(script) => match script.execute_function_for::<i64>(
+						Ok(script) => match script.execute_function_for::<f64>(
 							crate::app::script_lock(),
 							script.name.as_str(),
 							[(
@@ -113,7 +113,7 @@ impl TaskDisplayList {
 			Err(_) => {}
 		}
 
-		let mut tasks: Vec<(Uuid, Vec<i64>)> = task_list
+		let mut tasks: Vec<(Uuid, Vec<f64>)> = task_list
 			.into_iter()
 			.zip(task_passes)
 			.enumerate()
@@ -121,7 +121,7 @@ impl TaskDisplayList {
 				if pass {
 					Some((
 						task.get_uuid().clone(),
-						task_orderings.iter().map(|o| o[idx]).collect::<Vec<i64>>(),
+						task_orderings.iter().map(|o| o[idx]).collect::<Vec<f64>>(),
 					))
 				} else {
 					None
@@ -133,7 +133,10 @@ impl TaskDisplayList {
 			let mut final_ordering = Ordering::Equal;
 
 			for (a, b) in orderings_a.iter().zip(orderings_b.iter()) {
-				match a.cmp(b) {
+				let a = if a.is_finite() { *a } else { 0.0 };
+				let b = if b.is_finite() { *b } else { 0.0 };
+
+				match a.partial_cmp(&b).expect("always finite") {
 					Ordering::Equal => {}
 					Ordering::Less => {
 						final_ordering = Ordering::Less;

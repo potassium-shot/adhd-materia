@@ -83,6 +83,8 @@ impl IntoPocketPyValue for f64 {
 		unsafe {
 			if py_istype(value, py_totype(py_getbuiltin(py_name(c"float".as_ptr())))) {
 				Ok(py_tofloat(value))
+			} else if py_istype(value, py_totype(py_getbuiltin(py_name(c"int".as_ptr())))) {
+				Ok(py_toint(value) as f64)
 			} else {
 				Err(PocketPyScriptError::WrongType)
 			}
